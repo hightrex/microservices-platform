@@ -1,0 +1,46 @@
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+trivy-reports/
+
+# Go
+bin/
+vendor/
+*.exe
+*.test
+go.work
+go.work.sum
+
+# Rust
+target/
+**/*.rs.bk
+
+# Node/TypeScript
+node_modules/
+dist/
+coverage/
+.npm/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs & Reports
+logs/
+reports/
+tmp/
+
+# Terraform/Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Testing
+tests/security/reports/

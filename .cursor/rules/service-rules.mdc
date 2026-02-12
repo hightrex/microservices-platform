@@ -1,0 +1,48 @@
+---
+description: Code patterns and style guides for Go, Rust, and TypeScript services
+globs: "services/**/*, libs/**/*"
+alwaysApply: false
+---
+
+# Service Rules (Language-Specific)
+
+This rule defines the coding patterns for each language in the monorepo.
+
+## 1. Go (Gophers Only 🐹)
+- **Framework:** `github.com/gin-gonic/gin` for HTTP.
+- **Dependency Injection:** Use constructor functions (`NewService(deps...) *Service`).
+- **Context:** Every function dealing with I/O (DB, HTTP, Redis) MUST accept `context.Context` as the first argument.
+- **Errors:** Wrap errors with `github.com/pkg/errors` or `fmt.Errorf("%w", err)` for tracing.
+- **Project Layout:** Standard Go layout (`cmd/`, `internal/`, `pkg/`, `api/`).
+- **Style:** `gofmt` is mandatory. `golangci-lint` passes.
+- **SQL:** Utilize `sqlx` or raw `database/sql` (no ORMs). Written queries are safer.
+- **Graceful Shutdown:** Handle SIGTERM/SIGINT in `cmd/main.go`.
+
+## 2. Rust (Crustaceans Only 🦀)
+- **Framework:** `axum` (0.7+) for HTTP.
+- **Async Runtime:** `tokio`.
+- **Error Handling:** `thiserror` for library/module errors, `anyhow` for top-level application errors.
+- **Serialization:** `serde` (`derive(Serialize, Deserialize)`).
+- **Database:** `sqlx` (compile-time checked queries).
+- **Style:** `cargo fmt` and `clippy` checks are mandatory.
+- **Unwrap:** No `unwrap()` or `expect()` outside of tests. Use `?` for propagation.
+
+## 3. TypeScript (Gateway & scripts)
+- **Runtime:** Node.js (20+).
+- **Language:** TypeScript 5+ (Strict Mode enabled settings).
+- **Framework:** `express` for the gateway.
+- **Validation:** `zod` for run-time schema validation.
+- **Async:** Always `async/await`. Avoid promise chaining (`.then()`).
+- **Linting:** `eslint` + `prettier`.
+
+## 4. SQL Migrations
+- **Naming:** `NNN_description.sql` (e.g., `001_create_users.sql`).
+- **Reversibility:** Every migration file must contain `-- +migrate Up` and `-- +migrate Down` sections (or separate up/down files depending on tool).
+- **Indexes:** Create indexes concurrently with table creation where possible.
+- **Destructive Changes:** `DROP TABLE` requires `IF EXISTS`.
+
+## 5. Security Testing (Sast/Dast)
+- **Go:** `gosec` must pass.
+- **Rust:** `cargo-audit` must pass.
+- **TS:** `npm audit` must pass.
+- **Containers:** `trivy` scan must be clean (activates in CI).

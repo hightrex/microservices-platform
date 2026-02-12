@@ -1,0 +1,79 @@
+---
+description: Comprehensive foundation rules for the microservices platform (quality, security, multi-tenancy)
+globs: "**/*"
+alwaysApply: true
+---
+
+# Foundation Rules (Always Active)
+
+These rules are the non-negotiable baseline for the entire project. They ensure quality, security, and consistency from Day 1.
+
+## 1. Completeness & Discipline
+- **NEVER create placeholder or stub files.** Every file must contain working, compilable code.
+- **NEVER write functions with hardcoded/mock data.** Connect to real infrastructure (DB, Redis) or don't implement it yet.
+- **No commented-out code.** Delete it. Git is for history.
+- **TODOs allowed ONLY with linked issue/context** (e.g., `// TODO(phase-2): add retry logic`). Bare `// TODO` is forbidden.
+- If a feature is too large, implement a **working subset**, not a broken whole.
+
+## 2. Multi-Tenancy (CRITICAL)
+- **Every database table** MUST have a `tenant_id` (UUID) column.
+- **Every database query** MUST include `WHERE tenant_id = $1`.
+- **Every API response** MUST be scoped to the requesting organization.
+- **Tenant Context:** Always extract `tenant_id` from the context (via middleware) and pass it down to repositories.
+- **Isolation:** Never return data from one org to another. This is the primary security boundary.
+
+## 3. Shared Libraries (Mandatory)
+- **Go:** ALWAYS use `libs/go/pkg/...`.
+  - Logging: `libs/go/pkg/logger` (never `fmt.Println`)
+  - Errors: `libs/go/pkg/errors` (never raw `fmt.Errorf`)
+  - Middleware: `libs/go/pkg/middleware`
+  - Health: `libs/go/pkg/health`
+  - Config: `libs/go/pkg/config`
+  - DB: `libs/go/pkg/database`
+  - Messaging: `libs/go/pkg/messaging` (Redis Streams)
+  - Tenant: `libs/go/pkg/tenant`
+- **Rust:** ALWAYS use `libs/rust/...` (when available).
+- **TypeScript:** ALWAYS use `libs/typescript/...` (when available).
+
+## 4. Security (Non-Negotiable)
+- **Parameterized SQL ONLY.** No string concatenation for queries.
+- **Validate ALL input** at the handler/controller layer.
+- **No secrets in code.** Use `settings`/`config` packages loaded from env vars.
+- **No `*` CORS origins.** Use specific allowed origins.
+- **Service-to-Service Auth:** All internal calls must include a secure API key or mTLS headers.
+- **Timeouts:** Every outbound HTTP call must have a timeout (default 30s).
+- **TTL:** Every Redis key must have an expiration.
+
+## 5. API Standards
+- **Versioning:** All endpoints must be prefixed with `/api/v1/`.
+- **Response Format:**
+  ```json
+  {
+    "success": true,
+    "data": { ... },
+    "message": "Optional success message"
+  }
+  ```
+- **Error Format:**
+  ```json
+  {
+    "success": false,
+    "error": {
+      "code": "RESOURCE_NOT_FOUND",
+      "message": "User not found",
+      "details": "..."
+    }
+  }
+  ```
+- **Validation:** Use strong typing and validation libraries (Go: playground/validator, Rust: serde endpoints, TS: zod).
+
+## 6. Testing (Phase-Appropriate)
+- **Handlers:** Must have tests for happy path + auth/validation failure.
+- **Services:** Must have unit tests for core logic.
+- **Coverage:** Aim for high coverage on critical paths (auth, billing, file access).
+- **No function ships without at least one test.**
+
+## 7. Infrastructure
+- **Containerfiles:** Use multi-stage builds. Run as non-root user. Pin base images.
+- **Compose:** Healthchecks on every service. `restart: unless-stopped`.
+- **Database:** Migrations manage schema. No manual DDL. Reversible migrations only.

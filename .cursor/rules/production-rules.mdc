@@ -1,0 +1,38 @@
+---
+description: Strict production readiness rules (activated in later phases)
+globs: "**/*"
+alwaysApply: false
+---
+
+# Production Rules (Strict Mode)
+
+These rules are ACTIVATED during Phase 3 (Production Hardening) and beyond. They enforce strict production readiness.
+
+## 1. Zero Tolerance
+- **Zero TODOs:** No `// TODO` or `// FIXME` comments allowed in the codebase. Every item must be resolved or moved to an issue tracker.
+- **Zero Secrets:** `gitleaks` scan must be clean.
+- **Zero Warnings:** Linters must pass with zero warnings.
+
+## 2. Test Coverage & Quality
+- **Coverage:** Aim for 80%+ line coverage on critical services.
+- **Error Paths:** Must explicitly test error conditions (e.g., DB down, Auth fail).
+- **Integration:** APIs must have contract tests (using `libs/contracts`).
+- **Performance:** `k6` load tests must pass latency thresholds (< 100ms p95).
+
+## 3. Observability
+- **Process:** Every request must have a `trace_id`.
+- **Logs:** Must be structured JSON with correlation IDs.
+- **Metrics:** Prometheus metrics exposed at `/metrics`.
+- **Health:** `/health` endpoint must check all dependencies (DB, Redis, S3).
+
+## 4. Resilience
+- **Circuit Breakers:** Must be enabled on all outbound service calls.
+- **Retries:** Exponential backoff with jitter on transient failures.
+- **Timeouts:** Strict timeouts on all I/O.
+- **Rate Limiting:** Enabled and tuned per endpoint.
+
+## 5. Security Hardening
+- **Headers:** Secure headers (HSTS, CSP, X-Frame-Options) enabled.
+- **Cookies:** `Secure`, `HttpOnly`, `SameSite=Strict`.
+- **Dependencies:** `trivy` scan must show zero CRITICAL vulnerabilities.
+- **Least Privilege:** Containers run as non-root, read-only FS where possible.
