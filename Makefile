@@ -1,8 +1,13 @@
-.PHONY: infra-up infra-down services-up test lint security-all
+.PHONY: infra-up infra-down services-up test lint \
+       security-all security-sast security-dast security-trivy \
+       security-up security-down
 
 # Infrastructure
 infra-up:
 	./scripts/manage-infra.sh up
+
+infra-core-up:
+	./scripts/manage-infra.sh core-up
 
 infra-down:
 	./scripts/manage-infra.sh down
@@ -38,15 +43,24 @@ lint:
 
 # Security
 security-sast:
-	gosec -fmt=text ./...
-	# semgrep --config=p/golang .
+	@echo "Running SAST..."
+	./scripts/run-security-scan.sh --sast-only
+
+security-trivy:
+	@echo "Running Trivy container image scans..."
+	./scripts/run-security-scan.sh --trivy-only
 
 security-dast:
 	@echo "Running DAST (ZAP)..."
-	# podman compose -f deploy/podman/compose.security.yml up -d zaproxy
-	# Trigger generic scan
+	./scripts/run-security-scan.sh --dast-only
 
-security-all: security-sast security-dast
+security-all: security-sast security-trivy security-dast
+
+security-up:
+	./scripts/manage-infra.sh security-up
+
+security-down:
+	./scripts/manage-infra.sh security-down
 
 # Helper to run everything from scratch
 all: setup infra-up init-db test security-sast

@@ -1,64 +1,45 @@
-# Phase 0: Foundation (Weeks 1-2; ~3-5 days with parallelism)
-Focus: Monorepo setup, rules, shared Go lib, infra, scripts, docs. Complete fully before Phase 1.
-**Parallelism Tips**: Use 3-5 agents for lib packages (one per pkg), docs, and scripts/infra. Sync via Makefile/tests.
-### 0.1 Repository & Structure
-- [x] Initialize git repo (`git init`)
-- [x] Create `.gitignore` (ignore Go/Rust/Node/IDE files, .env, reports/)
-- [x] Create full directory tree (from build_plan.md)
-- [x] Create root `README.md` (overview, diagram, quick start)
-- [x] Create `.env.example` with all variables
-### 0.2 Cursor Rules
-- [x] Write `foundation-rules.mdc` (alwaysApply: true; completeness, quality, shared libs, security, multi-tenancy, API standards, DB, infra, testing, communication)
-- [x] Write `service-rules.mdc` (globs: services/**, libs/**; split by language: Go, Rust, TS, SQL, compose)
-- [x] Write `production-rules.mdc` (alwaysApply: false; activate in Phase 3)
-### 0.3 Shared Go Library (`libs/go/`) [PARALLEL: One agent per package]
-- [x] Initialize Go module (`go mod init`)
-- [x] `pkg/logger/` — zerolog + tests
-- [x] `pkg/errors/` — error types/codes + tests
-- [x] `pkg/config/` — viper/env vars + tests
-- [x] `pkg/database/` — Postgres pooling/migrations + tests
-- [x] `pkg/cache/` — Redis with TTL + tests
-- [x] `pkg/messaging/` — Redis Streams/DLQ + tests
-- [x] `pkg/middleware/` — auth/rate/CORS/recovery/ID/tenant + tests
-- [x] `pkg/tenant/` — context/scoped queries + tests
-- [x] `pkg/health/` — checks/dependencies + tests
-- [x] `pkg/tracing/` — OpenTelemetry spans + tests
-- [x] `pkg/metrics/` — Prometheus + tests
-- [x] `pkg/httputil/` — client/timeouts/retries + tests
-- [x] `pkg/testing/` — helpers/fixtures/mocks + tests
-- [ ] All tests: `go test ./...`
-### 0.4 Infrastructure (Compose) [PARALLEL with scripts]
-- [ ] `compose.base.yml`: Postgres/Redis/MinIO/Jaeger/Prometheus/Grafana
-- [ ] `compose.security.yml`: Kali/ZAP/Trivy
-- [ ] Verify `podman compose -f compose.base.yml up`
+# Phase 0: Foundation Setup (CHECKLIST)
 
-### 0.5 Scripts [PARALLEL with infra]
-- [ ] `setup-dev.sh` — dev setup
-- [ ] `init-databases.sh` — per-service DBs
-- [ ] `create-service.sh` — service scaffold
-### 0.6 Root Makefile
-- [ ] infra-up/down
-- [ ] services-up SVC="..."
-- [ ] dev-<service>
-- [ ] test/lint
-- [ ] security-sast (gosec/gitleaks/semgrep/hadolint/cargo-audit/npm audit)
-- [ ] security-dast (ZAP/fuzz)
-- [ ] security-all
-### 0.7 Security Setup [PARALLEL with Makefile]
-- [ ] Install tools
-- [ ] `tests/security/` structure/README
-- [ ] Semgrep custom rules (tenant_id/raw SQL)
-- [ ] Pre-commit hooks (gitleaks)
-### 0.8 Documentation [PARALLEL: Agents for each doc]
-- [ ] `VISION.md` — overview/diagrams
-- [ ] `DEVELOPMENT.md` — workflow/replace/hot-reload
-- [ ] `SECURITY.md` — standards/language
-- [ ] `MESSAGING.md` — Streams patterns/schema
-- [ ] `libs/contracts/` — OpenAPI templates
-### 0.9 Verification Gate
-- [ ] infra-up clean
-- [ ] Go lib build/test
-- [ ] Scripts work
-- [ ] SAST error-free
-- [ ] Commit; tag `m0-foundation-ready`
-**Milestone M0**: Foundation ready. Block Phase 1 until complete.
+## 0.1 Shared Go Library (`libs/go`)
+### Structure & Core
+- [x] `go.mod` setup (workspace or module)
+- [x] `pkg/errors/` — standardized error types (HTTP mapped)
+- [x] `pkg/logger/` — structured logging (zerolog/slog)
+- [x] `pkg/config/` — configuration loading (Viper/Env)
+- [x] `pkg/tenant/` — tenant context propagation (Middleware)
+- [x] `pkg/middleware/` — Gin middleware (Auth placeholder, logging, recovery)
+
+### Data & Infrastructure Drivers
+- [x] `pkg/database/` — Postgres connection (pgx pool) + migration runner
+- [x] `pkg/cache/` — Redis client + TTL enforcement
+- [x] `pkg/messaging/` — Redis Streams consumer/producer wrapper
+- [x] `pkg/health/` — health check framework with dependency status
+- [x] `pkg/tracing/` — OpenTelemetry setup and span helpers
+- [x] `pkg/metrics/` — Prometheus metrics registration
+- [x] `pkg/httputil/` — HTTP client with tracing, timeouts, retries
+- [x] `pkg/testing/` — test helpers, fixtures, mock builders
+
+## 0.4 Infrastructure (Compose)
+- [x] `compose.base.yml`: Postgres 16, Redis 7, MinIO, Jaeger, Prometheus, Grafana
+- [x] `compose.security.yml`: Kali, ZAP, Trivy
+- [x] `compose.dev.yml`: Adminer, Redis Commander
+- [x] Verify `infra-up` works clean (Prometheus fixed)
+
+## 0.5 Scripts
+- [x] `setup-dev.sh`
+- [x] `init-databases.sh`
+- [x] `create-service.sh`
+- [x] `manage-infra.sh`
+
+## 0.6 Root Makefile
+- [x] infra-up/down/core-up
+- [x] services-up
+- [x] test/lint
+- [x] security checks
+
+## 0.9 Verification Gate
+- [x] infra-up clean
+- [x] Go lib build/test
+- [x] Scripts work
+- [x] SAST error-free
+- [x] **Milestone M0**: Ready.

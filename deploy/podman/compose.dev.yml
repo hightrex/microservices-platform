@@ -6,15 +6,47 @@ services:
     container_name: platform-adminer
     restart: unless-stopped
     ports:
-      - "8090:8080"
+      - "127.0.0.1:8090:8080"
     environment:
       ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - data-net
+      - app-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    mem_limit: 128m
+    cpus: 0.25
 
   redis-commander:
     image: docker.io/rediscommander/redis-commander:latest
     container_name: platform-redis-commander
     restart: unless-stopped
     ports:
-      - "8091:8081"
+      - "127.0.0.1:8091:8081"
     environment:
-      REDIS_HOSTS: "local:redis:6379"
+      REDIS_HOSTS: "local:redis:6379:0:${REDIS_PASSWORD:-devredispass}"
+    networks:
+      - data-net
+      - app-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    mem_limit: 128m
+    cpus: 0.25
+
+networks:
+  data-net:
+    external: true
+    name: podman_data-net
+  app-net:
+    external: true
+    name: podman_app-net

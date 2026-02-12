@@ -2,30 +2,68 @@ version: '3.8'
 
 services:
   zaproxy:
-    image: docker.io/zaproxy/zap-stable
+    image: docker.io/zaproxy/zap-stable:2.16.1
     container_name: platform-zap
-    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=false -config api.key=${ZAP_API_KEY:-zap-dev-api-key}
     ports:
-      - "8095:8080"
+      - "127.0.0.1:8095:8080"
     volumes:
       - zap_data:/zap/wrk/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/JSON/core/view/version/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - security-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 1.0
 
   trivy:
-    image: docker.io/aquasec/trivy:latest
+    image: docker.io/aquasec/trivy:0.58.2
     container_name: platform-trivy
     entrypoint: ["trivy"]
+    command: ["--help"]
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - trivy_cache:/root/.cache/
+    networks:
+      - security-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    mem_limit: 1g
+    cpus: 1.0
 
-  # Kali container for manual pentesting or running scripts
   kali:
-    image: docker.io/kalilinux/kali-rolling
+    image: docker.io/kalilinux/kali-rolling:2025.1
     container_name: platform-kali
     tty: true
     stdin_open: true
     command: ["/bin/bash"]
-    # network_mode: host # Often useful for pentesting, but use bridge for now to talk to other containers
+    networks:
+      - security-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW       # nmap, network scanning
+      - NET_ADMIN      # network config for pentesting
+    mem_limit: 1g
+    cpus: 1.0
+
+networks:
+  security-net:
+    driver: bridge
 
 volumes:
   zap_data:
