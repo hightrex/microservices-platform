@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  zaproxy:
+    image: docker.io/zaproxy/zap-stable
+    container_name: platform-zap
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+    ports:
+      - "8095:8080"
+    volumes:
+      - zap_data:/zap/wrk/
+
+  trivy:
+    image: docker.io/aquasec/trivy:latest
+    container_name: platform-trivy
+    entrypoint: ["trivy"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - trivy_cache:/root/.cache/
+
+  # Kali container for manual pentesting or running scripts
+  kali:
+    image: docker.io/kalilinux/kali-rolling
+    container_name: platform-kali
+    tty: true
+    stdin_open: true
+    command: ["/bin/bash"]
+    # network_mode: host # Often useful for pentesting, but use bridge for now to talk to other containers
+
+volumes:
+  zap_data:
+  trivy_cache:

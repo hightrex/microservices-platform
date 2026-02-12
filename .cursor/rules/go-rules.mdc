@@ -1,0 +1,32 @@
+---
+description: Code patterns and standards for Go services
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Go Rules
+
+## Core Principles
+- **Framework:** `github.com/gin-gonic/gin` for HTTP services.
+- **Dependency Injection:** Use constructor functions (`NewService(deps...) *Service`).
+- **Context:** Every function dealing with I/O (DB, HTTP, Redis) MUST accept `context.Context` as the first argument.
+
+## Error Handling
+- **Wrap Errors:** Use `github.com/pkg/errors` or `fmt.Errorf("%w", err)` to preserve stack traces and context.
+- **Typed Errors:** Define custom error types in `pkg/errors` and use them for domain logic.
+- **No Panic:** Never use `panic()` outside of `cmd/main.go` startup logic.
+
+## Project Layout
+- **Standard Layout:** Follow `cmd/`, `internal/`, `pkg/`, `api/` structure.
+- **Services:** Business logic lives in `internal/service`.
+- **Handlers:** HTTP handlers live in `internal/handlers`.
+- **Repositories:** Data access lives in `internal/repository`.
+
+## Style & Quality
+- **Linting:** Code must pass `golangci-lint` with default settings.
+- **Formatting:** `gofmt` is mandatory.
+- **Naming:** `PascalCase` for exported, `camelCase` for private. JSON tags use `snake_case`.
+
+## Data Access
+- **No ORMs:** Use `sqlx` or raw `database/sql` for safety and performance.
+- **Migrations:** Managed via `golang-migrate` or similar, stored in `migrations/`.

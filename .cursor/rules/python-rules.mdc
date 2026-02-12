@@ -1,0 +1,27 @@
+---
+description: Code patterns and standards for Python services
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python Rules
+
+## Core Principles
+- **Language:** Python 3.12+.
+- **Framework:** `fastapi` for HTTP services.
+- **Async:** `async`/`await` for all I/O.
+- **Type Hints:** Mandatory type annotations (`mypy` compliant).
+
+## Model Validation
+- **Pydantic:** Mandatory for all API schemas, environment configs, and data transfer.
+- **Validation:** Strict validation rules (`min_length`, `regex`, etc).
+
+## Style & Quality
+- **Formatting:** `black` mandatory.
+- **Linting:** `flake8` or `ruff` mandatory.
+- **Naming:** `snake_case` for variables/functions. `PascalCase` for classes.
+
+## Testing
+- **Framework:** `pytest`.
+- **Async:** `pytest-asyncio`.
+- **Coverage:** `pytest-cov`.

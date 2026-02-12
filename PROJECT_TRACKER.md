@@ -13,15 +13,15 @@ Before scaffolding, verify these are installed. Run each command to check.
 
 | Tool | Min Version | Check Command | Status |
 |------|-------------|---------------|--------|
-| Go | 1.22+ | `go version` | [ ] |
-| Rust | 1.75+ (stable) | `rustc --version` | [ ] |
-| Cargo | (comes with Rust) | `cargo --version` | [ ] |
-| Node.js | 20 LTS+ | `node --version` | [ ] |
-| npm | 10+ | `npm --version` | [ ] |
-| Podman | 4.0+ | `podman --version` | [ ] |
-| Podman Compose | 1.0+ | `podman compose version` | [ ] |
-| Git | 2.40+ | `git --version` | [ ] |
-| Make | any | `make --version` | [ ] |
+| Go | 1.22+ | `go version` | [x] |
+| Rust | 1.75+ (stable) | `rustc --version` | [x] |
+| Cargo | (comes with Rust) | `cargo --version` | [x] |
+| Node.js | 20 LTS+ | `node --version` | [x] |
+| npm | 10+ | `npm --version` | [x] |
+| Podman | 4.0+ | `podman --version` | [x] |
+| Podman Compose | 1.0+ | `podman compose version` | [x] |
+| Git | 2.40+ | `git --version` | [x] |
+| Make | any | `make --version` | [x] |
 
 ### Security Tools (can be installed during Phase 0)
 
@@ -39,9 +39,9 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] **Architecture:** 8-service multi-tenant SaaS (decided)
 - [x] **Languages:** Go 5, Rust 2, TypeScript 1 (decided)
 - [x] **Frameworks:** Gin (Go), Axum (Rust), Express (TS) (decided)
-- [ ] **Go module path:** e.g., `github.com/<username>/microservices-platform`
-- [ ] **GitHub repo:** public or private initially?
-- [ ] **License:** MIT / Apache 2.0 / AGPL for open-source intent?
+- [x] **Go module path:** `github.com/hightrex/microservices-platform`
+- [x] **GitHub repo:** public (hightrex/microservices-platform)
+- [x] **License:** MIT
 - [ ] **Container registry:** GitHub Container Registry (ghcr.io) or DockerHub?
 
 ---
@@ -49,91 +49,92 @@ Before scaffolding, verify these are installed. Run each command to check.
 ## Phase 0: Foundation (Week 1-2)
 
 ### 0.1 Repository & Structure
-- [ ] Initialize git repo (`git init`)
-- [ ] Create `.gitignore` (Go, Rust, Node, IDE files, .env, reports/)
-- [ ] Create full directory tree:
-  - [ ] `services/` (8 service directories)
-  - [ ] `libs/go/`, `libs/rust/`, `libs/typescript/`, `libs/contracts/`
-  - [ ] `deploy/podman/`, `deploy/k8s/`
-  - [ ] `docs/architecture/`, `docs/api-specs/`, `docs/runbooks/`, `docs/guides/`
-  - [ ] `tests/e2e/`, `tests/contract/`, `tests/load/`, `tests/security/`
-  - [ ] `scripts/`
-  - [ ] `frontend/`
-- [ ] Create root `README.md` (project overview, architecture diagram, quick start)
-- [ ] Create `.env.example` with all documented variables
+- [x] Initialize git repo (`git init`)
+- [x] Create `.gitignore` (Go, Rust, Node, IDE files, .env, reports/)
+- [x] Create full directory tree:
+  - [x] `services/` (8 service directories)
+  - [x] `libs/go/`, `libs/rust/`, `libs/typescript/`, `libs/contracts/`
+  - [x] `deploy/podman/`, `deploy/k8s/`
+  - [x] `docs/architecture/`, `docs/api-specs/`, `docs/runbooks/`, `docs/guides/`
+  - [x] `tests/e2e/`, `tests/contract/`, `tests/load/`, `tests/security/`
+  - [x] `scripts/`
+  - [x] `frontend/`
+- [x] Create root `README.md` (project overview, architecture diagram, quick start)
+- [x] Create `.env.example` with all documented variables
 
 ### 0.2 Cursor Rules
-- [ ] Write `foundation-rules.mdc` (alwaysApply: true)
-- [ ] Write `service-rules.mdc` (globs: services/**, libs/**)
-- [ ] Write `production-rules.mdc` (alwaysApply: false)
+- [x] Write `foundation-rules.mdc` (alwaysApply: true)
+- [x] Write `service-rules.mdc` (split into `go`, `rust`, `ts`, `py`, `infra` rules)
+- [x] Write `production-rules.mdc` (alwaysApply: false)
 
 ### 0.3 Shared Go Library (`libs/go/`)
-- [ ] Initialize Go module (`go mod init`)
-- [ ] `pkg/logger/` — structured logging (zerolog)
-- [ ] `pkg/errors/` — standardized error types with codes
-- [ ] `pkg/config/` — config loading (viper, env vars)
-- [ ] `pkg/database/` — Postgres connection, pooling, migration runner
-- [ ] `pkg/cache/` — Redis client abstraction with TTL
-- [ ] `pkg/messaging/` — Redis Streams producer/consumer with DLQ
-- [ ] `pkg/middleware/` — auth, rate-limit, CORS, recovery, request ID
-- [ ] `pkg/tenant/` — tenant context extraction, scoped query helpers
-- [ ] `pkg/health/` — health check framework with dependency status
-- [ ] `pkg/tracing/` — OpenTelemetry setup and span helpers
-- [ ] `pkg/metrics/` — Prometheus metrics registration
-- [ ] `pkg/httputil/` — HTTP client with tracing, timeouts, retries
-- [ ] `pkg/testing/` — test helpers, fixtures, mock builders
-- [ ] Unit tests for each package
+- [x] Initialize Go module (`go mod init`)
+- [x] `pkg/logger/` — structured logging (zerolog)
+- [x] `pkg/errors/` — standardized error types with codes
+- [x] `pkg/config/` — config loading (viper, env vars)
+- [x] `pkg/database/` — Postgres connection, pooling, migration runner
+- [x] `pkg/cache/` — Redis client abstraction with TTL
+- [x] `pkg/messaging/` — Redis Streams producer/consumer with DLQ
+- [x] `pkg/middleware/` — auth, rate-limit, CORS, recovery, request ID
+- [x] `pkg/tenant/` — tenant context extraction, scoped query helpers
+- [x] `pkg/health/` — health check framework with dependency status
+- [x] `pkg/tracing/` — OpenTelemetry setup and span helpers
+- [x] `pkg/metrics/` — Prometheus metrics registration
+- [x] `pkg/httputil/` — HTTP client with tracing, timeouts, retries
+- [x] `pkg/testing/` — test helpers, fixtures, mock builders
+- [x] Unit tests for each package
 
 ### 0.4 Infrastructure (Compose)
-- [ ] `deploy/podman/compose.base.yml`:
-  - [ ] PostgreSQL 16 (with `init-databases.sh` for per-service DBs)
-  - [ ] Redis 7
-  - [ ] MinIO (S3-compatible storage)
-  - [ ] Jaeger (distributed tracing)
-  - [ ] Prometheus (metrics)
-  - [ ] Grafana (dashboards)
-- [ ] `deploy/podman/compose.security.yml`:
-  - [ ] Kali Linux container
-  - [ ] OWASP ZAP container
-  - [ ] Trivy scanner container
-- [ ] `deploy/podman/compose.dev.yml`:
-  - [ ] Adminer (DB admin UI)
-  - [ ] Redis Commander (Redis UI)
-- [ ] Verify `podman compose -f compose.base.yml up` works
+- [x] `deploy/podman/compose.base.yml`:
+  - [x] PostgreSQL 16 (with `init-databases.sh` for per-service DBs)
+  - [x] Redis 7
+  - [x] MinIO (S3-compatible storage)
+  - [x] Jaeger (distributed tracing)
+  - [x] Prometheus (metrics)
+  - [x] Grafana (dashboards)
+- [x] `deploy/podman/compose.security.yml`:
+  - [x] Kali Linux container
+  - [x] OWASP ZAP container
+  - [x] Trivy scanner container
+- [x] `deploy/podman/compose.dev.yml`:
+  - [x] Adminer (DB admin UI)
+  - [x] Redis Commander (Redis UI)
+- [x] Verify `podman compose -f compose.base.yml up` works (via manage-infra.sh)
 
 ### 0.5 Scripts
-- [ ] `scripts/setup-dev.sh` — one-command dev environment setup
-- [ ] `scripts/init-databases.sh` — create per-service Postgres databases
-- [ ] `scripts/create-service.sh` — scaffold new service from template
+- [x] `scripts/setup-dev.sh` — one-command dev environment setup
+- [x] `scripts/init-databases.sh` — create per-service Postgres databases
+- [x] `scripts/create-service.sh` — scaffold new service from template
+- [x] `scripts/manage-infra.sh` — unified podman management script
 
 ### 0.6 Root Makefile
-- [ ] `make infra-up` / `make infra-down` — start/stop infrastructure
-- [ ] `make services-up SVC="..."` — start specific services in containers
-- [ ] `make dev-<service>` — run a service natively with hot-reload
-- [ ] `make test` — run all tests
-- [ ] `make lint` — run all linters
-- [ ] `make security-sast` — run SAST tools
-- [ ] `make security-dast` — run DAST tools
-- [ ] `make security-all` — run all security scans
+- [x] `make infra-up` / `make infra-down` — start/stop infrastructure (using manage-infra.sh)
+- [x] `make services-up SVC="..."` — start specific services in containers
+- [x] `make dev-<service>` — run a service natively with hot-reload
+- [x] `make test` — run all tests
+- [x] `make lint` — run all linters
+- [x] `make security-sast` — run SAST tools
+- [x] `make security-dast` — run DAST tools
+- [x] `make security-all` — run all security scans
 
 ### 0.7 Security Setup
-- [ ] Install gosec, gitleaks, semgrep, hadolint
-- [ ] Create `tests/security/` structure with README
-- [ ] Write semgrep custom rules (missing auth middleware, raw SQL, missing tenant_id)
-- [ ] Set up pre-commit hooks for gitleaks
+- [x] Install gosec, gitleaks, semgrep, hadolint
+- [x] Create `tests/security/` structure with README
+- [x] Write semgrep custom rules (missing auth middleware, raw SQL, missing tenant_id)
+- [x] Set up pre-commit hooks for gitleaks
 
 ### 0.8 Documentation
-- [ ] `docs/architecture/VISION.md` — architecture overview with diagrams
-- [ ] `docs/guides/DEVELOPMENT.md` — local dev workflow, `replace` directives, hot-reload
-- [ ] `docs/guides/SECURITY.md` — secure coding standards per language
-- [ ] `docs/guides/MESSAGING.md` — Redis Streams patterns, event schema
+- [x] `docs/architecture/VISION.md` — architecture overview with diagrams
+- [x] `docs/guides/DEVELOPMENT.md` — local dev workflow, `replace` directives, hot-reload
+- [x] `docs/guides/SECURITY.md` — secure coding standards per language
+- [x] `docs/guides/MESSAGING.md` — Redis Streams patterns, event schema
 
 ### 0.9 Phase 0 Verification
-- [ ] `make infra-up` starts all containers cleanly
-- [ ] Go shared lib compiles with `go build ./...`
-- [ ] All shared lib tests pass with `go test ./...`
-- [ ] `scripts/create-service.sh` generates a valid service skeleton
-- [ ] gitleaks + gosec + semgrep run without config errors
+- [x] `make infra-up` starts all containers cleanly
+- [x] Go shared lib compiles with `go build ./...`
+- [x] All shared lib tests pass with `go test ./...`
+- [x] `scripts/create-service.sh` generates a valid service skeleton
+- [x] gitleaks + gosec + semgrep run without config errors
 
 ---
 

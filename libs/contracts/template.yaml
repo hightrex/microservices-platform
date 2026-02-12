@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: Microservices Platform API
+  version: 1.0.0
+  description: Template for service API definition
+servers:
+  - url: /api/v1
+tags:
+  - name: health
+    description: Health check endpoints
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Check service health
+      responses:
+        '200':
+          description: Service is UP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []

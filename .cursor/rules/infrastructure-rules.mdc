@@ -1,0 +1,27 @@
+---
+description: Code patterns and standards for infrastructure (Docker, K8s, Terraform)
+globs: "deploy/**/*.yml, **/*Dockerfile*, **/*Containerfile*, **/*compose*.yml"
+alwaysApply: false
+---
+
+# Infrastructure Rules
+
+## Containerization
+- **Base Images:** Use minimal, secure base images (e.g., `alpine`, `distroless`).
+- **Tagging:** Use specific tags/SHAs (e.g., `postgres:16-alpine`), never `latest`.
+- **User:** Run services as non-root user (`USER nobody`).
+- **Optimization:** Use multi-stage builds.
+
+## Kubernetes
+- **Configs:** Use structural logging and JSON output for pods.
+- **Resources:** Define CPU/Memory requests and limits properly.
+- **Networking:** Use proper ingress configurations and secure communication.
+
+## Terraform
+- **Modules:** Use modules for reusable infrastructure components.
+- **State:** Use remote state with locking (e.g., S3 + DynamoDB).
+- **Naming:** Follow consistent resource naming conventions.
+
+## General
+- **Secrets:** Never commit secrets to git. Use environment variables or secret managers.
+- **Documentation:** Maintain up-to-date infrastructure diagrams and documentation.

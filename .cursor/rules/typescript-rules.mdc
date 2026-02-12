@@ -1,0 +1,24 @@
+---
+description: Code patterns and standards for TypeScript services
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: false
+---
+
+# TypeScript Rules
+
+## Core Principles
+- **Language:** TypeScript 5+ (Strict Mode enabled).
+- **Framework:** `express` for API Gateway. `react` for Frontend.
+- **Validation:** `zod` for run-time schema validation.
+- **Async:** `async/await` only. Avoid promise chaining (`.then()`).
+
+## Style & Quality
+- **Linting:** `eslint` mandatory.
+- **Formatting:** `prettier` mandatory.
+- **Naming:** `camelCase` for variables/functions. `PascalCase` for types/interfaces/components.
+- **No Any:** Use strict types for everything. Use `unknown` or generics when needed.
+
+## Frontend Specifics
+- **Framework:** React 18+. Functional components only. Hooks only.
+- **Components:** Single responsibility principle.
+- **Styling:** Tailwind CSS or CSS Modules. No raw CSS files.

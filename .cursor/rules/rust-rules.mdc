@@ -1,0 +1,23 @@
+---
+description: Code patterns and standards for Rust services
+globs: "**/*.rs"
+alwaysApply: false
+---
+
+# Rust Rules
+
+## Core Principles
+- **Framework:** `axum` (0.7+) for HTTP services.
+- **Async Runtime:** `tokio`.
+- **Formatting:** `cargo fmt` mandatory.
+- **Error Handling:** `thiserror` for library/module errors, `anyhow` for top-level application errors.
+- **Serialization:** `serde` (`derive(Serialize, Deserialize)`).
+
+## Style & Quality
+- **Clippy:** `cargo clippy` must pass.
+- **Unwrap:** No `unwrap()` or `expect()` outside of tests. Use `?` for propagation.
+- **Types:** Use `Option<T>` for nullable values, `Result<T, E>` for operations that can fail.
+
+## Data Access
+- **No ORMs:** Use `sqlx` (compile-time checked queries) for safety and performance.
+- **Migrations:** Managed via `sqlx-cli` or `db-migrate`.

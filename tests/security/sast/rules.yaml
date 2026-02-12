@@ -1,0 +1,29 @@
+rules:
+  - id: missing-tenant-id-in-sql
+    message: "Potential Tenant Isolation Bypass: SQL query missing 'tenant_id'. All queries must filter by tenant_id."
+    languages: [go]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.Query($CTX, "...", ...)
+          - pattern: |
+              $DB.QueryRow($CTX, "...", ...)
+          - pattern: |
+              $DB.Exec($CTX, "...", ...)
+      - pattern-not-regex: "tenant_id"
+
+  - id: raw-sql-concatenation
+    message: "Potential SQL Injection: Avoid string concatenation in SQL queries. Use parameterized queries ($1, $2, etc.)."
+    languages: [go]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $Q = fmt.Sprintf("...%s...", ...)
+              ...
+              $DB.Query($CTX, $Q, ...)
+          - pattern: |
+              $Q = "..." + "..."
+              ...
+              $DB.Query($CTX, $Q, ...)

@@ -4,7 +4,7 @@ overview: Multi-tenant SaaS platform for organizations (hospitals, schools, busi
 todos:
   - id: phase-0-foundation
     content: "Phase 0: Monorepo structure, Cursor rules, shared Go libs (incl. tenant middleware), compose files, docs"
-    status: pending
+    status: done
   - id: phase-1-core
     content: "Phase 1: Auth & Identity, Organization Service, API Gateway (module-aware), shared TS libs"
     status: pending
