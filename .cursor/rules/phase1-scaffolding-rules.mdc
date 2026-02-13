@@ -1,0 +1,269 @@
+---
+description: Go service scaffolding patterns for Phase 1 (Auth, Org services)
+globs: "services/**/*.go"
+alwaysApply: true
+---
+
+# Phase 1 Go Service Scaffolding Patterns
+
+These patterns ensure every Go service follows the same structure, wiring order, and conventions. Use these patterns when creating or modifying `auth-service` and `organization-service`.
+
+## 1. `cmd/main.go` — Canonical Startup Order
+
+Every service `main.go` MUST follow this exact initialization order:
+
+```go
+func main() {
+    // 1. Logger
+    logger.Setup(logger.Config{Level: "debug", Environment: "dev"})
+
+    // 2. Config
+    var cfg Config
+    if err := config.Load(".", "config", &cfg); err != nil {
+        logger.Fatal().Err(err).Msg("Failed to load config")
+    }
+
+    // 3. Database connection
+    ctx := context.Background()
+    pool, err := database.Connect(ctx, cfg.Database)
+    if err != nil {
+        logger.Fatal().Err(err).Msg("Failed to connect to database")
+    }
+    defer pool.Close()
+
+    // 4. Run migrations
+    if err := database.Migrate(cfg.Database, "migrations"); err != nil {
+        logger.Fatal().Err(err).Msg("Failed to run migrations")
+    }
+
+    // 5. Redis connection
+    redisClient := cache.NewClient(cfg.Redis)
+    defer redisClient.Close()
+
+    // 6. Wire repositories (concrete implementations)
+    userRepo := postgres.NewUserRepo(pool)
+    sessionRepo := postgres.NewSessionRepo(pool)
+    tokenCache := redis.NewTokenCache(redisClient)
+
+    // 7. Wire services (accept interfaces)
+    tokenSvc := service.NewTokenService(cfg.JWT)
+    authSvc := service.NewAuthService(userRepo, sessionRepo, tokenCache, tokenSvc)
+
+    // 8. Wire handlers
+    authHandler := handlers.NewAuthHandler(authSvc)
+
+    // 9. Setup router and register routes
+    r := gin.New()
+    api.RegisterRoutes(r, authHandler)
+
+    // 10. Start server with graceful shutdown
+    srv := &http.Server{
+        Addr:    fmt.Sprintf(":%d", cfg.ServerPort),
+        Handler: r,
+    }
+    // ... graceful shutdown pattern (see below)
+}
+```
+
+**Graceful shutdown** — ALWAYS use this pattern:
+
+```go
+go func() {
+    if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+        logger.Fatal().Err(err).Msg("Server listen failed")
+    }
+}()
+
+quit := make(chan os.Signal, 1)
+signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+<-quit
+logger.Info().Msg("Shutting down server...")
+
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+if err := srv.Shutdown(ctx); err != nil {
+    logger.Fatal().Err(err).Msg("Server forced to shutdown")
+}
+```
+
+## 2. Config Struct Pattern
+
+Embed shared config types. Use `mapstructure` tags for Viper compatibility:
+
+```go
+type Config struct {
+    ServerPort int             `mapstructure:"server_port"`
+    Database   database.Config `mapstructure:"database"`
+    Redis      cache.Config    `mapstructure:"redis"`
+    JWT        JWTConfig       `mapstructure:"jwt"`
+}
+
+type JWTConfig struct {
+    Secret          string        `mapstructure:"secret"`
+    AccessTokenTTL  time.Duration `mapstructure:"access_token_ttl"`
+    RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl"`
+}
+```
+
+## 3. Repository Pattern — Interfaces + Implementations
+
+**Define interfaces in the service layer** so services depend on abstractions:
+
+```go
+// internal/service/interfaces.go
+type UserRepository interface {
+    Create(ctx context.Context, user *models.User) error
+    GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+    GetByEmail(ctx context.Context, email string) (*models.User, error)
+    List(ctx context.Context, filter models.UserFilter, page models.Pagination) ([]models.User, int, error)
+    Update(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error
+    Delete(ctx context.Context, id uuid.UUID) error
+}
+```
+
+**Implement in `internal/repository/postgres/`** with constructor injection:
+
+```go
+// internal/repository/postgres/user_repo.go
+type UserRepo struct {
+    db *pgxpool.Pool
+}
+
+func NewUserRepo(db *pgxpool.Pool) *UserRepo {
+    return &UserRepo{db: db}
+}
+```
+
+**Every repo method MUST call `tenant.RequireTenant(ctx)` or `tenant.NewScope(ctx)`:**
+
+```go
+func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+    tenantID, err := tenant.RequireTenant(ctx)
+    if err != nil {
+        return nil, err
+    }
+    row := r.db.QueryRow(ctx,
+        "SELECT id, tenant_id, email, first_name, last_name, status FROM users WHERE id = $1 AND tenant_id = $2",
+        id, tenantID,
+    )
+    // ... scan and return
+}
+```
+
+## 4. Service Layer Pattern
+
+- Accept **interfaces** (not concrete repos)
+- Return **domain errors** (from `libs/go/pkg/errors`)
+- Log **security events** via `securitylog.Log()`
+
+```go
+type AuthService struct {
+    users      UserRepository
+    sessions   SessionRepository
+    tokenCache TokenCache
+    tokens     *TokenService
+}
+
+func NewAuthService(users UserRepository, sessions SessionRepository, cache TokenCache, tokens *TokenService) *AuthService {
+    return &AuthService{users: users, sessions: sessions, tokenCache: cache, tokens: tokens}
+}
+```
+
+## 5. Handler Pattern
+
+Bind → Validate → Call Service → Respond:
+
+```go
+func (h *AuthHandler) Login(c *gin.Context) {
+    var req models.LoginRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": "INVALID_REQUEST", "message": "Invalid request body"}})
+        return
+    }
+    if errs := validation.Validate(req); errs != nil {
+        c.JSON(http.StatusBadRequest, validation.ErrorResponse(errs))
+        return
+    }
+
+    resp, err := h.authService.Login(c.Request.Context(), req)
+    if err != nil {
+        // Map domain errors to HTTP status codes
+        handleError(c, err)
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"success": true, "data": resp})
+}
+```
+
+## 6. Route Registration — `api/routes.go`
+
+Register routes with ordered middleware stack:
+
+```go
+func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, userHandler *handlers.UserHandler) {
+    // Global middleware (order matters)
+    r.Use(middleware.Recovery())
+    r.Use(middleware.RequestLogger())
+    r.Use(middleware.Tenant())
+
+    // Public routes
+    r.GET("/health", healthHandler)
+
+    v1 := r.Group("/api/v1")
+    {
+        auth := v1.Group("/auth")
+        {
+            auth.POST("/register", authHandler.Register)
+            auth.POST("/login", authHandler.Login)
+        }
+
+        // Protected routes
+        protected := v1.Group("")
+        protected.Use(authMiddleware)
+        {
+            protected.POST("/auth/logout", authHandler.Logout)
+            protected.POST("/auth/refresh", authHandler.RefreshToken)
+
+            users := protected.Group("/users")
+            users.Use(rbacMiddleware("users"))
+            {
+                users.GET("", userHandler.List)
+                users.GET("/:id", userHandler.GetByID)
+                // ...
+            }
+        }
+    }
+}
+```
+
+## 7. Directory Structure Checklist
+
+Every Go service MUST have:
+```
+services/<name>/
+├── cmd/main.go            # Entry point
+├── config.yaml            # Dev config
+├── go.mod                 # Module file (with replace for libs/go)
+├── internal/
+│   ├── config/config.go   # Service config struct
+│   ├── handlers/          # HTTP handlers
+│   ├── models/            # Domain models + request/response types
+│   ├── repository/
+│   │   ├── postgres/      # Postgres implementations
+│   │   └── redis/         # Redis cache implementations
+│   └── service/           # Business logic + repository interfaces
+├── api/
+│   └── routes.go          # Route registration
+└── migrations/            # SQL migration files
+```
+
+## 8. Import Conventions
+
+**Always import from shared libs — never reinvent:**
+- `"github.com/hightrex/microservices-platform/libs/go/pkg/logger"` — NOT `"log"` or `"fmt"`
+- `"github.com/hightrex/microservices-platform/libs/go/pkg/errors"` — NOT `"github.com/pkg/errors"`
+- `"github.com/hightrex/microservices-platform/libs/go/pkg/database"` — uses `pgx/v5`
+- `"github.com/hightrex/microservices-platform/libs/go/pkg/tenant"` — for `RequireTenant` / `NewScope`
+- `"github.com/hightrex/microservices-platform/libs/go/pkg/validation"` — for input validation
+- `"github.com/hightrex/microservices-platform/libs/go/pkg/securitylog"` — for security event logging

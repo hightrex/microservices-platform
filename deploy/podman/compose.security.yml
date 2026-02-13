@@ -9,12 +9,7 @@ services:
       - "127.0.0.1:8095:8080"
     volumes:
       - zap_data:/zap/wrk/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/JSON/core/view/version/"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+
     networks:
       - security-net
     security_opt:
@@ -25,7 +20,7 @@ services:
     cpus: 1.0
 
   trivy:
-    image: docker.io/aquasec/trivy:0.58.2
+    image: docker.io/aquasec/trivy:0.59.1
     container_name: platform-trivy
     entrypoint: ["trivy"]
     command: ["--help"]
@@ -44,11 +39,11 @@ services:
     cpus: 1.0
 
   kali:
-    image: docker.io/kalilinux/kali-rolling:2025.1
+    image: docker.io/kalilinux/kali-rolling:latest
     container_name: platform-kali
     tty: true
     stdin_open: true
-    command: ["/bin/bash"]
+    command: ["/usr/bin/tail", "-f", "/dev/null"]
     networks:
       - security-net
     security_opt:

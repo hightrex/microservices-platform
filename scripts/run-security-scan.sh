@@ -13,11 +13,11 @@ SEMGREP_RULES="tests/security/sast/rules.yaml"
 COMPOSE_SECURITY="$PROJECT_ROOT/deploy/podman/compose.security.yml"
 
 # Tool image versions (pinned)
-GITLEAKS_IMAGE="docker.io/zricethezav/gitleaks:v8.21.2"
-SEMGREP_IMAGE="docker.io/semgrep/semgrep:1.102.0"
-GOSEC_IMAGE="docker.io/securego/gosec:2.21.4"
-HADOLINT_IMAGE="docker.io/hadolint/hadolint:v2.12.0"
-TRIVY_IMAGE="docker.io/aquasec/trivy:0.58.2"
+GITLEAKS_IMAGE="docker.io/zricethezav/gitleaks:v8.23.3"
+SEMGREP_IMAGE="docker.io/semgrep/semgrep:1.109.0"
+GOSEC_IMAGE="docker.io/securego/gosec:2.22.1"
+HADOLINT_IMAGE="docker.io/hadolint/hadolint:v2.12.1-beta"
+TRIVY_IMAGE="docker.io/aquasec/trivy:0.59.1"
 
 # Colors
 RED='\033[0;31m'
@@ -175,9 +175,9 @@ run_trivy() {
 
     # Scan the infra images we're actually using
     local images=(
-        "docker.io/library/postgres:16-alpine"
-        "docker.io/library/redis:7-alpine"
-        "docker.io/minio/minio:RELEASE.2024-01-31T20-20-33Z"
+        "docker.io/library/postgres:17-alpine"
+        "docker.io/library/redis:7.4-alpine"
+        "docker.io/minio/minio:RELEASE.2025-01-20T14-44-11Z"
     )
 
     # Also scan any platform service images if they exist
@@ -195,8 +195,8 @@ run_trivy() {
         report_name=$(echo "$img" | tr '/:.' '_')
         log_info "Scanning: $img"
         if podman run --rm \
-            -v trivy_cache:/root/.cache/ \
-            -v /run/user/$(id -u)/podman/podman.sock:/var/run/docker.sock:ro \
+            -v trivy_cache:/root/.cache/:z \
+            -v /run/user/$(id -u)/podman/podman.sock:/var/run/docker.sock:ro,z \
             "$TRIVY_IMAGE" \
             image --severity CRITICAL,HIGH \
             --format json \
@@ -222,18 +222,23 @@ run_dast() {
     if [ -z "$zap_running" ]; then
         log_info "Starting ZAP proxy..."
         podman compose --env-file "$PROJECT_ROOT/.env" -f "$COMPOSE_SECURITY" up -d zaproxy
-        log_info "Waiting for ZAP to initialize (30s)..."
-        sleep 30
     fi
 
     local zap_api_key="${ZAP_API_KEY:-zap-dev-api-key}"
     local zap_url="http://127.0.0.1:8095"
 
-    if ! curl -sf "$zap_url/JSON/core/view/version/?apikey=$zap_api_key" &>/dev/null; then
-        log_error "ZAP is not responding at $zap_url — skipping DAST"
-        inc_fail
-        return
-    fi
+    log_info "Waiting for ZAP to be ready..."
+    local max_retries=60
+    local count=0
+    while ! curl -sf "$zap_url/JSON/core/view/version/?apikey=$zap_api_key" &>/dev/null; do
+        sleep 2
+        count=$((count + 1))
+        if [ $count -ge $max_retries ]; then
+            log_error "ZAP is not responding at $zap_url — skipping DAST"
+            inc_fail
+            return
+        fi
+    done
     log_ok "ZAP is running and accessible"
     inc_pass
 

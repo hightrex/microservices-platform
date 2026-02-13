@@ -1,6 +1,7 @@
-.PHONY: infra-up infra-down services-up test lint \
+.PHONY: infra-up infra-core-up infra-down infra-logs infra-clean infra-purge \
+       services-up init-db setup test test-tenant-isolation lint \
        security-all security-sast security-dast security-trivy \
-       security-up security-down test-tenant-isolation
+       security-up security-down
 
 # Infrastructure
 infra-up:
@@ -18,10 +19,13 @@ infra-logs:
 infra-clean:
 	./scripts/manage-infra.sh clean
 
+infra-purge:
+	./scripts/manage-infra.sh purge
+
 # Services (placeholder for now)
 services-up:
 	@echo "Starting services..."
-	# podman compose -f deploy/podman/compose.services.yml up -d
+	podman compose -f deploy/podman/compose.services.yml up -d
 
 # Development
 init-db:

@@ -28,6 +28,7 @@ import (
 // EventType identifies the category of security event.
 type EventType string
 
+// #nosec G101
 const (
 	// Authentication events
 	EventLoginSuccess     EventType = "auth.login.success"

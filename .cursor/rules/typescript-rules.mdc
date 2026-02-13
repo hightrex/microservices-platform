@@ -18,6 +18,57 @@ alwaysApply: false
 - **Naming:** `camelCase` for variables/functions. `PascalCase` for types/interfaces/components.
 - **No Any:** Use strict types for everything. Use `unknown` or generics when needed.
 
+## API Gateway Patterns (Express)
+
+### Middleware Stack Order
+Middleware MUST be registered in this exact order:
+1. Request ID / Correlation ID (`X-Request-ID`)
+2. Request logging (`pino`)
+3. Security headers (`helmet`)
+4. CORS (configurable origins — never `*`)
+5. Request body limit (configurable, default 1MB)
+6. JWT validation (extract `sub`, `tid`, `org`, `roles` from Bearer token)
+7. Tenant context extraction (set `X-Tenant-ID`, `X-User-ID`, `X-User-Roles` headers for downstream)
+8. Module gating (check org's enabled modules via Org Service, cached in Redis)
+9. Rate limiting (Redis-backed sliding window, per-org from plan, per-endpoint overrides)
+10. Circuit breaker per downstream service (`opossum`)
+
+### Reverse Proxy
+- Use `http-proxy-middleware` for proxying to downstream services.
+- Forward `X-Tenant-ID`, `X-User-ID`, `X-User-Roles`, `X-Request-ID` to downstream.
+- Strip `Authorization` header before forwarding (downstream trusts gateway headers).
+
+### Key Dependencies
+| Package | Purpose |
+|---------|---------|
+| `express` | HTTP framework |
+| `helmet` | Security headers |
+| `cors` | CORS middleware |
+| `http-proxy-middleware` | Reverse proxy to backend services |
+| `jsonwebtoken` | JWT validation |
+| `ioredis` | Redis client (rate limiting, module cache) |
+| `zod` | Request validation |
+| `pino` | Structured logging (JSON) |
+| `opossum` | Circuit breaker |
+
+### Circuit Breaker Pattern
+- One circuit breaker per downstream service.
+- Open circuit returns `503 Service Unavailable`.
+- Configure: `timeout: 10s`, `errorThresholdPercentage: 50`, `resetTimeout: 30s`.
+
+### Rate Limiting
+- Redis-backed sliding window algorithm.
+- Per-org limits derived from billing plan.
+- Per-endpoint overrides (e.g., auth login: 10/min, register: 5/min).
+- Return `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` on every response.
+- Return `429 Too Many Requests` with `Retry-After` header when exceeded.
+
+## Shared TypeScript Package (`libs/typescript/`)
+- Must export from `src/index.ts` (barrel exports).
+- Modules: `logger.ts`, `errors.ts`, `health.ts`, `tenant.ts`, `types.ts`.
+- Use `pino` for logging (JSON format, correlation ID support).
+- Error types must match Go `libs/go/pkg/errors` response format.
+
 ## Frontend Specifics
 - **Framework:** React 18+. Functional components only. Hooks only.
 - **Components:** Single responsibility principle.

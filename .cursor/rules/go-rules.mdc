@@ -1,7 +1,7 @@
 ---
 description: Code patterns and standards for Go services
 globs: "**/*.go"
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Go Rules
@@ -12,21 +12,38 @@ alwaysApply: false
 - **Context:** Every function dealing with I/O (DB, HTTP, Redis) MUST accept `context.Context` as the first argument.
 
 ## Error Handling
-- **Wrap Errors:** Use `github.com/pkg/errors` or `fmt.Errorf("%w", err)` to preserve stack traces and context.
-- **Typed Errors:** Define custom error types in `pkg/errors` and use them for domain logic.
+- **Wrap Errors:** Use `libs/go/pkg/errors` (custom platform errors) or `fmt.Errorf("%w", err)` to preserve context.
+- **Typed Errors:** Define custom error types in `libs/go/pkg/errors` and use them for domain logic.
 - **No Panic:** Never use `panic()` outside of `cmd/main.go` startup logic.
+- **Do NOT import `github.com/pkg/errors`** — use `libs/go/pkg/errors` exclusively.
 
 ## Project Layout
-- **Standard Layout:** Follow `cmd/`, `internal/`, `pkg/`, `api/` structure.
-- **Services:** Business logic lives in `internal/service`.
-- **Handlers:** HTTP handlers live in `internal/handlers`.
-- **Repositories:** Data access lives in `internal/repository`.
+- **Standard Layout:** Follow `cmd/`, `internal/`, `api/`, `migrations/` structure.
+- **Services:** Business logic lives in `internal/service/`.
+- **Handlers:** HTTP handlers live in `internal/handlers/`.
+- **Repositories:** Data access lives in `internal/repository/postgres/` and `internal/repository/redis/`.
+- **Models:** Domain models and request/response types live in `internal/models/`.
+- **Config:** Service config struct lives in `internal/config/config.go`.
+- **Routes:** Route registration lives in `api/routes.go`.
+- **Interfaces:** Repository interfaces live in `internal/service/` (where they are consumed).
 
 ## Style & Quality
 - **Linting:** Code must pass `golangci-lint` with default settings.
 - **Formatting:** `gofmt` is mandatory.
 - **Naming:** `PascalCase` for exported, `camelCase` for private. JSON tags use `snake_case`.
+- **Config tags:** Use `mapstructure` tags on all config structs for Viper compatibility.
 
 ## Data Access
-- **No ORMs:** Use `sqlx` or raw `database/sql` for safety and performance.
-- **Migrations:** Managed via `golang-migrate` or similar, stored in `migrations/`.
+- **Database driver:** `github.com/jackc/pgx/v5` via `pgxpool.Pool` (from `libs/go/pkg/database`). Do NOT use `sqlx` or `database/sql`.
+- **Migrations:** Managed via `golang-migrate`, stored in `migrations/`.
+- **Tenant scoping:** Every repo method for tenant-owned data MUST call `tenant.RequireTenant(ctx)` or `tenant.NewScope(ctx)`.
+- **Parameterized queries only.** No string interpolation in SQL.
+
+## Testing
+- **File naming:** `*_test.go` next to the source file.
+- **Integration tests:** Use `//go:build integration` tag. Run with `-tags=integration`.
+- **Table-driven tests** preferred for multiple input/output scenarios.
+- **Test helpers:** Use `libs/go/pkg/testing` for shared test utilities.
+
+## Module Files
+- Every service `go.mod` MUST include: `replace github.com/hightrex/microservices-platform/libs/go => ../../libs/go`

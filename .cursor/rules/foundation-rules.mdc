@@ -10,17 +10,20 @@ These rules are the non-negotiable baseline for the entire project. They ensure 
 
 ## 1. Completeness & Discipline
 - **NEVER create placeholder or stub files.** Every file must contain working, compilable code.
-- **NEVER write functions with hardcoded/mock data.** Connect to real infrastructure (DB, Redis) or don't implement it yet.
+- **NEVER ship mock/hardcoded data in production code paths.** If it can't connect to real infra (DB/Redis/etc.), don't implement it yet.
 - **No commented-out code.** Delete it. Git is for history.
-- **TODOs allowed ONLY with linked issue/context** (e.g., `// TODO(phase-2): add retry logic`). Bare `// TODO` is forbidden.
+- **TODOs allowed ONLY with linked issue/context** (e.g., `// TODO(phase-2): add retry logic (ISSUE-123)`); bare `// TODO` is forbidden.
 - If a feature is too large, implement a **working subset**, not a broken whole.
 
 ## 2. Multi-Tenancy (CRITICAL)
-- **Every database table** MUST have a `tenant_id` (UUID) column.
-- **Every database query** MUST include `WHERE tenant_id = $1`.
+- **Every tenant-owned database table** MUST have a `tenant_id` (UUID) column.
+- **Every read/write touching tenant-owned data MUST be tenant-scoped.**
+  - Tenant scope is enforced via `tenant_id` constraint (or an equivalent tenant-safe join path).
+  - Do **not** rely on "WHERE tenant_id = $1" as a literal pattern; ensure tenant scoping remains correct across joins/subqueries.
+- **Tenant identity MUST come from auth context** (middleware/JWT/service credentials), **never** from request body/query params.
 - **Every API response** MUST be scoped to the requesting organization.
-- **Tenant Context:** Always extract `tenant_id` from the context (via middleware) and pass it down to repositories.
-- **Isolation:** Never return data from one org to another. This is the primary security boundary.
+- **Isolation:** Never return data from one tenant to another. This is the primary security boundary.
+- **Repository enforcement:** tenant scoping MUST be enforced in the repository/data layer, not "remembered" per handler.
 
 ## 3. Shared Libraries (Mandatory)
 - **Go:** ALWAYS use `libs/go/pkg/...`.
@@ -30,22 +33,33 @@ These rules are the non-negotiable baseline for the entire project. They ensure 
   - Health: `libs/go/pkg/health`
   - Config: `libs/go/pkg/config`
   - DB: `libs/go/pkg/database`
+  - Cache: `libs/go/pkg/cache`
   - Messaging: `libs/go/pkg/messaging` (Redis Streams)
   - Tenant: `libs/go/pkg/tenant`
+  - HTTP client: `libs/go/pkg/httputil`
+  - Tracing: `libs/go/pkg/tracing`
+  - Metrics: `libs/go/pkg/metrics`
+  - Security Logging: `libs/go/pkg/securitylog`
+  - Validation: `libs/go/pkg/validation`
+  - Test Helpers: `libs/go/pkg/testing`
 - **Rust:** ALWAYS use `libs/rust/...` (when available).
 - **TypeScript:** ALWAYS use `libs/typescript/...` (when available).
 
 ## 4. Security (Non-Negotiable)
-- **Parameterized SQL ONLY.** No string concatenation for queries.
-- **Validate ALL input** at the handler/controller layer.
-- **No secrets in code.** Use `settings`/`config` packages loaded from env vars.
-- **No `*` CORS origins.** Use specific allowed origins.
-- **Service-to-Service Auth:** All internal calls must include a secure API key or mTLS headers.
-- **Timeouts:** Every outbound HTTP call must have a timeout (default 30s).
-- **TTL:** Every Redis key must have an expiration.
+- **Parameterized SQL ONLY.** No string concatenation / `fmt.Sprintf`-built queries.
+- **Validate ALL input** at the handler/controller boundary before business logic.
+- **Authentication ≠ Authorization:** protected endpoints MUST enforce RBAC/permissions (default deny).
+- **No secrets in code.** Load from config/env. `.env.example` only.
+- **Do not log sensitive data**: passwords, API keys, tokens/JWTs, Authorization headers, cookies, MFA seeds, or full PII.
+- **CORS:** No `*` origins. Use explicit allowlists.
+- **Service-to-Service Auth:** internal calls must include secure API key headers or mTLS.
+- **Timeouts + cancellation:** every outbound HTTP call MUST have a timeout (default 30s) and honor context cancellation.
+- **Request limits:** enforce max request body size; reject unexpected `Content-Type` (e.g., require `application/json` for JSON endpoints).
+- **Redis TTL:** every Redis key MUST have an expiration unless explicitly justified (and documented).
+- **SSRF prevention:** any user-controlled outbound URL (webhooks, callbacks) MUST be validated (no localhost/link-local/private ranges unless explicitly allowed).
 
 ## 5. API Standards
-- **Versioning:** All endpoints must be prefixed with `/api/v1/`.
+- **Versioning:** all endpoints must be prefixed with `/api/v1/`.
 - **Response Format:**
   ```json
   {
@@ -54,26 +68,111 @@ These rules are the non-negotiable baseline for the entire project. They ensure 
     "message": "Optional success message"
   }
   ```
-- **Error Format:**
+- **Error Format (stable codes, no internal leaks):**
   ```json
   {
     "success": false,
     "error": {
       "code": "RESOURCE_NOT_FOUND",
       "message": "User not found",
-      "details": "..."
+      "details": "Optional, non-sensitive details"
     }
   }
   ```
-- **Validation:** Use strong typing and validation libraries (Go: playground/validator, Rust: serde endpoints, TS: zod).
+- **Errors:** never expose stack traces/internal DB errors to clients. Include `correlation_id` for debugging.
+- **Validation libraries:** Go: `pkg/validation`, Rust: serde validation patterns, TS: zod.
 
 ## 6. Testing (Phase-Appropriate)
-- **Handlers:** Must have tests for happy path + auth/validation failure.
-- **Services:** Must have unit tests for core logic.
-- **Coverage:** Aim for high coverage on critical paths (auth, billing, file access).
+
+- **Handlers:** must have tests for happy path + auth/validation failure.
+- **Core logic:** must have unit tests for business rules and edge cases.
+- **No production mocks:** production code must not depend on mock data.
+- **Unit test boundaries:** unit tests may use fakes/mocks for external boundaries (DB/Redis/HTTP/time) via interfaces.
+- **Integration tests:** add tagged integration tests for real DB/Redis where applicable (e.g., `//go:build integration`).
 - **No function ships without at least one test.**
 
 ## 7. Infrastructure
-- **Containerfiles:** Use multi-stage builds. Run as non-root user. Pin base images.
-- **Compose:** Healthchecks on every service. `restart: unless-stopped`.
-- **Database:** Migrations manage schema. No manual DDL. Reversible migrations only.
+
+- **Containerfiles:** multi-stage builds, non-root user, pinned base images.
+- **Compose:** healthchecks on every service; `restart: unless-stopped`; no hardcoded passwords.
+- **Database:** migrations manage schema. No manual DDL. Reversible migrations only.
+- **Network exposure:** only the gateway is publicly exposed; internal services should not publish ports externally (unless explicitly for local dev).
+
+## 8. Messaging & Idempotency (Events)
+
+- **Event schema** MUST include `id`, `type`, `version`, `source`, `tenant_id`, and `correlation_id`.
+- **Consumers must be idempotent** (dedupe by event id / processed-event store).
+- **DLQ required** for poison messages; never infinite retry loops.
+
+## 9. Language-Specific Safe Defaults (Hardening Rules)
+
+### Go (Backend Services)
+
+- **NO `http.DefaultClient` or `http.Get/Post` shortcuts.**
+  - Always use a custom HTTP client with explicit timeouts (default 30s).
+  - Prefer `libs/go/pkg/httputil` wrapper.
+- **All outbound I/O must accept `context.Context`.**
+  - DB, Redis, HTTP, messaging must propagate context.
+  - Honor cancellation and timeouts.
+- **No `panic()` outside `cmd/main.go`.**
+  - Use structured errors and proper error returns.
+- **No global mutable state.**
+  - Dependency injection via constructors.
+  - No package-level DB connections or singletons.
+- **No raw `fmt.Println` or `log.Println`.**
+  - Always use structured logger (`libs/go/pkg/logger`).
+- **No goroutines without lifecycle management.**
+  - Background workers must support graceful shutdown via context.
+- **No unbounded request body reads.**
+  - Always set max body size.
+- **No direct SQL execution outside repository layer.**
+  - All queries must go through repository abstractions.
+
+---
+
+### Rust (Services)
+
+- **No `unwrap()` or `expect()` outside tests.**
+  - Use `?` or explicit error handling.
+  - Crashes in production are unacceptable.
+- **No blocking calls in async contexts.**
+  - Use async-compatible libraries only.
+- **No direct DB access in handlers.**
+  - Use service + repository separation.
+- **All external calls must use timeouts.**
+- **No `println!` for logging.**
+  - Use structured logging crate (shared rust common lib).
+
+---
+
+### TypeScript (Gateway / Frontend)
+
+- **No `any` type.**
+  - Strict mode enabled.
+  - Use explicit interfaces or `zod` schemas.
+- **No implicit `any`.**
+  - `tsconfig` must enforce `strict: true`.
+- **No unvalidated request input.**
+  - All inbound payloads must pass schema validation (zod).
+- **No direct `fetch` without timeout / abort controller.**
+  - Always enforce request timeout.
+- **No `console.log` in production paths.**
+  - Use structured logger wrapper.
+- **No direct environment variable access.**
+  - Use centralized config loader.
+
+---
+
+### General (All Languages)
+
+- **Fail closed, not open.**
+  - If auth/tenant context is missing → reject request.
+  - If policy check fails → deny by default.
+- **No silent error swallowing.**
+  - Every error must be logged or returned with context.
+- **No infinite retries.**
+  - All retry logic must have backoff + max attempts.
+- **Explicit resource limits.**
+  - Rate limits, request size limits, connection pool limits must be defined.
+- **Security-first defaults.**
+  - Any ambiguous behavior should default to the safer option.

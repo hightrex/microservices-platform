@@ -1,0 +1,38 @@
+server_port: 8080
+environment: dev
+log_level: debug
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  name: auth_service
+  ssl_mode: disable
+  max_conns: 10
+  min_conns: 2
+
+redis:
+  address: localhost:6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "dev-secret-change-in-production-minimum-32-chars!"
+  access_token_ttl: 15m
+  refresh_token_ttl: 168h
+  issuer: "auth-service"
+
+tracing:
+  enabled: false
+  collector_endpoint: localhost:4317
+
+mfa:
+  issuer: "MicroservicesPlatform"
+
+security:
+  bcrypt_cost: 12
+  max_failed_logins: 5
+  lockout_duration_mins: 30
+  password_min_length: 8
+  password_history_count: 5

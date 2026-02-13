@@ -1,0 +1,109 @@
+---
+description: SQL migration file conventions for schema management
+globs: "**/migrations/*.sql"
+alwaysApply: true
+---
+
+# SQL Migration Rules
+
+Conventions for all database migration files. Applies to `services/*/migrations/*.sql`.
+
+## 1. File Naming
+
+- Format: `NNN_description.up.sql` / `NNN_description.down.sql`
+- Zero-padded 3-digit number: `001`, `002`, `003`
+- Description uses snake_case: `001_create_users_table.up.sql`
+- Every `.up.sql` MUST have a matching `.down.sql`
+
+## 2. Standard Columns (Every Table)
+
+```sql
+id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
+- `id` is always UUID, auto-generated.
+- `created_at` and `updated_at` are always `TIMESTAMPTZ`, never `TIMESTAMP`.
+
+## 3. Tenant-Scoped Tables
+
+If the table holds tenant-owned data, it MUST include:
+
+```sql
+tenant_id UUID NOT NULL
+```
+
+- `tenant_id` is always the **first column after `id`**.
+- Add a composite index or unique constraint involving `tenant_id` for the primary access pattern.
+- Exception: lookup/reference tables shared across tenants (e.g., `plans`, `permissions`) do NOT need `tenant_id`.
+
+## 4. Enum Types
+
+Use Postgres `CREATE TYPE` for status/role enums:
+
+```sql
+CREATE TYPE user_status AS ENUM ('active', 'disabled', 'locked');
+```
+
+- Define the type BEFORE the `CREATE TABLE` that uses it.
+- Drop the type AFTER the `DROP TABLE` in the down migration.
+
+## 5. Index Naming Conventions
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Regular index | `idx_{table}_{columns}` | `idx_users_tenant_id_status` |
+| Unique index | `uniq_{table}_{columns}` | `uniq_users_tenant_id_email` |
+| Foreign key | `fk_{table}_{ref_table}` | `fk_sessions_users` |
+
+## 6. Down Migration Rules
+
+- Must be the **exact inverse** of the up migration.
+- Use `DROP TABLE IF EXISTS` and `DROP TYPE IF EXISTS`.
+- Drop indexes explicitly if they won't be auto-dropped with the table.
+- Drop tables in reverse dependency order (drop referencing tables first).
+
+## 7. General Rules
+
+- **One `CREATE TABLE` per migration file** — don't mix multiple tables unless they are tightly coupled (e.g., a join table created alongside its parent).
+- **No `ALTER TABLE` in initial creation migrations** — use a single `CREATE TABLE` statement.
+- **Always use `IF NOT EXISTS` for `CREATE TYPE`** to make migrations re-runnable.
+- **Seed data** (e.g., default roles, plans) goes in the same migration that creates the table, using `INSERT ... ON CONFLICT DO NOTHING`.
+- **Foreign keys**: always specify `ON DELETE` behavior (`CASCADE`, `SET NULL`, or `RESTRICT`).
+
+## 8. Example Migration
+
+```sql
+-- 001_create_users_table.up.sql
+CREATE TYPE user_status AS ENUM ('active', 'disabled', 'locked');
+
+CREATE TABLE users (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    status user_status NOT NULL DEFAULT 'active',
+    mfa_enabled BOOLEAN NOT NULL DEFAULT false,
+    mfa_secret VARCHAR(255),
+    failed_login_count INT NOT NULL DEFAULT 0,
+    locked_until TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uniq_users_tenant_id_email ON users (tenant_id, email);
+CREATE INDEX idx_users_tenant_id_status ON users (tenant_id, status);
+
+-- Enforce lowercase email
+ALTER TABLE users ADD CONSTRAINT chk_users_email_lowercase CHECK (email = lower(email));
+```
+
+```sql
+-- 001_create_users_table.down.sql
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS user_status;
+```

@@ -1,6 +1,6 @@
 # Microservices Platform — Project Tracker
 
-> **Last updated:** 2026-02-12
+> **Last updated:** 2026-02-13
 > **Total services:** 8 | **Phases:** 4 | **Target:** ~26 weeks
 
 ---
@@ -75,13 +75,15 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] `pkg/database/` — Postgres connection, pooling, migration runner
 - [x] `pkg/cache/` — Redis client abstraction with TTL
 - [x] `pkg/messaging/` — Redis Streams producer/consumer with DLQ
-- [x] `pkg/middleware/` — auth, rate-limit, CORS, recovery, request ID
-- [x] `pkg/tenant/` — tenant context extraction, scoped query helpers
+- [x] `pkg/middleware/` — auth, rate-limit, CORS, recovery, request ID, identity guard
+- [x] `pkg/tenant/` — tenant context extraction, `RequireTenant()`, `TenantScope`
 - [x] `pkg/health/` — health check framework with dependency status
 - [x] `pkg/tracing/` — OpenTelemetry setup and span helpers
 - [x] `pkg/metrics/` — Prometheus metrics registration
 - [x] `pkg/httputil/` — HTTP client with tracing, timeouts, retries
 - [x] `pkg/testing/` — test helpers, fixtures, mock builders
+- [x] `pkg/validation/` — input validation (go-playground/validator, error formatting)
+- [x] `pkg/securitylog/` — structured security event logging (25+ event types)
 - [x] Unit tests for each package
 
 ### 0.4 Infrastructure (Compose)
@@ -123,18 +125,35 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] Write semgrep custom rules (missing auth middleware, raw SQL, missing tenant_id)
 - [x] Set up pre-commit hooks for gitleaks
 
+### 0.7a Security Guardrails (Code-Level) ✅
+- [x] Enforce tenant_id at repository layer (`pkg/tenant/repository.go` — `RequireTenant()`, `TenantScope`)
+- [x] Never trust request body for identity (`pkg/middleware/identity_guard.go` — `RejectBodyIdentity()`)
+- [x] Validate input before business logic (`pkg/validation/validation.go` — `Validate()`, `ErrorResponse()`)
+- [x] Parameterized SQL only (pgx enforces; semgrep rules extended for `QueryRow`/`Exec`)
+- [x] Add rate limiting standards (`docs/guides/RATE_LIMITING.md` — tiers, headers, config schema)
+- [x] Log security events (`pkg/securitylog/securitylog.go` — 25+ event types, structured fields)
+- [x] Write tenant-isolation tests (`tests/security/tenant-isolation/` — harness, scenarios, `make test-tenant-isolation`)
+- [x] Add threat modeling file (`docs/architecture/THREAT_MODEL.md` — STRIDE, risk register)
+- [x] Semgrep rule for identity-from-request-body
+- [x] All 37 security tests passing
+
 ### 0.8 Documentation
 - [x] `docs/architecture/VISION.md` — architecture overview with diagrams
 - [x] `docs/guides/DEVELOPMENT.md` — local dev workflow, `replace` directives, hot-reload
-- [x] `docs/guides/SECURITY.md` — secure coding standards per language
+- [x] `docs/guides/SECURITY.md` — secure coding standards per language (updated with Phase 0 packages)
 - [x] `docs/guides/MESSAGING.md` — Redis Streams patterns, event schema
+- [x] `docs/guides/RATE_LIMITING.md` — rate limiting standards, per-plan tiers, configuration
+- [x] `docs/architecture/THREAT_MODEL.md` — STRIDE analysis, risk register, trust boundaries
 
 ### 0.9 Phase 0 Verification
 - [x] `make infra-up` starts all containers cleanly
 - [x] Go shared lib compiles with `go build ./...`
-- [x] All shared lib tests pass with `go test ./...`
+- [x] All shared lib tests pass with `go test ./...` (15 packages, 0 failures)
 - [x] `scripts/create-service.sh` generates a valid service skeleton
 - [x] gitleaks + gosec + semgrep run without config errors
+- [x] `make test-tenant-isolation` passes (4 tests)
+- [x] Phase 0 security guardrails audit complete
+- [x] **Git tag: `m0-foundation-ready`** — committed and pushed
 
 ---
 
@@ -148,35 +167,37 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [ ] `tenant.ts` — tenant context extraction
 - [ ] Unit tests
 
-### 1.2 Auth & Identity Service (Go/Gin — Port 8080)
-- [ ] Scaffold with `create-service.sh`
-- [ ] Database migrations:
-  - [ ] `001_create_users_table.sql`
-  - [ ] `002_create_sessions_table.sql`
-  - [ ] `003_create_api_keys_table.sql`
-  - [ ] `004_create_roles_permissions_table.sql`
-- [ ] Handlers:
-  - [ ] `POST /api/v1/auth/register`
-  - [ ] `POST /api/v1/auth/login`
-  - [ ] `POST /api/v1/auth/logout`
-  - [ ] `POST /api/v1/auth/refresh`
-  - [ ] `POST /api/v1/auth/mfa/setup`
-  - [ ] `POST /api/v1/auth/mfa/verify`
-  - [ ] `GET /api/v1/users` (list, tenant-scoped)
-  - [ ] `GET /api/v1/users/:id`
-  - [ ] `PUT /api/v1/users/:id`
-  - [ ] `DELETE /api/v1/users/:id`
-  - [ ] `PUT /api/v1/users/:id/role`
-  - [ ] `GET /api/v1/users/:id/sessions`
-- [ ] Service layer (business logic, no stubs)
-- [ ] Repository layer (Postgres + Redis cache)
-- [ ] Redis Streams events: `user.created`, `user.login`, `auth.failed`
-- [ ] OpenTelemetry instrumentation
-- [ ] Containerfile (multi-stage, non-root)
-- [ ] Unit tests (all handlers)
-- [ ] Integration tests (against real DB)
-- [ ] OpenAPI spec in `libs/contracts/auth-service.yaml`
-- [ ] README
+### 1.2 Auth & Identity Service (Go/Gin — Port 8080) ✅
+- [x] Scaffold with `create-service.sh`
+- [x] Database migrations:
+  - [x] `001_create_users_table.sql`
+  - [x] `002_create_sessions_table.sql`
+  - [x] `003_create_api_keys_table.sql`
+  - [x] `004_create_roles_permissions_table.sql`
+  - [x] `005_create_password_history_table.sql`
+- [x] Handlers:
+  - [x] `POST /api/v1/auth/register`
+  - [x] `POST /api/v1/auth/login`
+  - [x] `POST /api/v1/auth/logout`
+  - [x] `POST /api/v1/auth/refresh`
+  - [x] `POST /api/v1/auth/mfa/setup`
+  - [x] `POST /api/v1/auth/mfa/verify`
+  - [x] `GET /api/v1/users` (list, tenant-scoped)
+  - [x] `GET /api/v1/users/:id`
+  - [x] `PUT /api/v1/users/:id`
+  - [x] `DELETE /api/v1/users/:id`
+  - [x] `PUT /api/v1/users/:id/role`
+  - [x] `GET /api/v1/users/:id/sessions`
+  - [x] `PUT /api/v1/users/:id/password`
+- [x] Service layer (business logic, no stubs)
+- [x] Repository layer (Postgres + Redis cache)
+- [x] Redis Streams events: `user.created`, `user.login`, `auth.failed`, + 6 more
+- [x] OpenTelemetry instrumentation
+- [x] Containerfile (multi-stage, non-root)
+- [x] Unit tests (29 tests across handlers, services, middleware)
+- [x] Integration tests (against real DB)
+- [x] OpenAPI spec in `libs/contracts/auth-service.yaml`
+- [x] README
 
 ### 1.3 Organization Service (Go/Gin — Port 8081)
 - [ ] Scaffold with `create-service.sh`
