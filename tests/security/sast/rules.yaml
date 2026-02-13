@@ -27,3 +27,33 @@ rules:
               $Q = "..." + "..."
               ...
               $DB.Query($CTX, $Q, ...)
+          - pattern: |
+              $Q = fmt.Sprintf("...%s...", ...)
+              ...
+              $DB.QueryRow($CTX, $Q, ...)
+          - pattern: |
+              $Q = fmt.Sprintf("...%s...", ...)
+              ...
+              $DB.Exec($CTX, $Q, ...)
+          - pattern: |
+              $Q = "..." + "..."
+              ...
+              $DB.QueryRow($CTX, $Q, ...)
+          - pattern: |
+              $Q = "..." + "..."
+              ...
+              $DB.Exec($CTX, $Q, ...)
+
+  - id: identity-from-request-body
+    message: "Security: Do not read identity fields (tenant_id, org_id, user_id) from request body. Use context/JWT instead."
+    languages: [go]
+    severity: WARNING
+    pattern-either:
+      - pattern: |
+          $REQ.TenantID
+      - pattern: |
+          $BODY["tenant_id"]
+      - pattern: |
+          $BODY["org_id"]
+      - pattern: |
+          $BODY["user_id"]

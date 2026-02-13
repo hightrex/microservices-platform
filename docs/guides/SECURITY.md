@@ -16,9 +16,13 @@
 - Secrets management via environment variables / Vault.
 
 ### Coding Standards
-- **No Raw SQL**: Always use parameterized queries.
-- **Tenant Context**: Always use `pkg/tenant` to propagate context.
-- **Input Validation**: Validate at the edge (Gateway/Handlers).
+- **No Raw SQL**: Always use parameterized queries (enforced by semgrep).
+- **Tenant Context**: Always use `pkg/tenant.RequireTenant(ctx)` in repository methods. Never query without tenant scoping.
+- **No Identity in Bodies**: Never read `tenant_id`, `org_id`, `user_id` from request bodies. Use `middleware.RejectBodyIdentity()`.
+- **Input Validation**: Validate all inputs using `pkg/validation.Validate()` before business logic.
+- **Security Logging**: Use `pkg/securitylog` for authentication, authorization, and data access events.
+- **Rate Limiting**: Follow standards in `docs/guides/RATE_LIMITING.md` (429 + standard headers).
+- **Threat Model**: See `docs/architecture/THREAT_MODEL.md` for attack surface and trust boundaries.
 
 ---
 

@@ -1,6 +1,6 @@
 .PHONY: infra-up infra-down services-up test lint \
        security-all security-sast security-dast security-trivy \
-       security-up security-down
+       security-up security-down test-tenant-isolation
 
 # Infrastructure
 infra-up:
@@ -35,6 +35,10 @@ test:
 	@echo "Running tests..."
 	cd libs/go && go test -v ./...
 	# cd services/auth-service && go test -v ./...
+
+test-tenant-isolation:
+	@echo "Running tenant isolation tests..."
+	cd tests/security/tenant-isolation && go test -v -count=1 ./...
 
 lint:
 	@echo "Running linters..."
