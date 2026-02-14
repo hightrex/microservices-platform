@@ -1,9 +1,7 @@
 ---
 description: Code patterns and standards for TypeScript services
-globs: "**/*.ts, **/*.tsx"
 alwaysApply: false
 ---
-
 # TypeScript Rules
 
 ## Core Principles

@@ -4,9 +4,10 @@
 	infra-dev-up infra-dev-down infra-dev-restart \
 	infra-security-up infra-security-down infra-security-restart infra-security-logs \
 	services-up services-down services-restart services-status services-ps services-logs services-build services-rebuild services-clean services-pull \
-	services-up-auth services-up-org \
+	services-up-auth services-up-org services-up-gateway \
+	core-up core-down core-logs core-status core-build core-rebuild core-reset \
 	stack-up stack-down stack-restart stack-status stack-logs stack-build stack-rebuild stack-clean stack-reset \
-	init-db setup test test-tenant-isolation lint \
+	init-db setup test test-ts test-gateway test-tenant-isolation lint \
 	security-sast security-trivy security-dast security-all security-up security-down \
 	all
 
@@ -53,6 +54,16 @@ help:
 	@echo "  make services-pull          Pull referenced images (if any)"
 	@echo "  make services-up-auth       Start only Auth Service"
 	@echo "  make services-up-org        Start only Organization Service"
+	@echo "  make services-up-gateway    Start only API Gateway"
+	@echo ""
+	@echo "Core stack (infra + auth + org + gateway):"
+	@echo "  make core-up                Start infra + core services (auth, org, gateway)"
+	@echo "  make core-down              Stop core services"
+	@echo "  make core-logs              Tail core services logs"
+	@echo "  make core-status            Show core services status"
+	@echo "  make core-build             Build core service images"
+	@echo "  make core-rebuild           Rebuild core (no-cache) then start"
+	@echo "  make core-reset             Clean -> up -> init-db -> healthy"
 	@echo ""
 	@echo "Full stack (infra + dev + security + services):"
 	@echo "  make stack-up               Start everything"
@@ -193,6 +204,43 @@ services-up-org:
 	@echo "==> Starting Organization Service..."
 	podman compose -f $(SERVICES_COMPOSE) up -d organization-service
 
+services-up-gateway:
+	@echo "==> Starting API Gateway..."
+	podman compose -f $(CORE_COMPOSE) up -d api-gateway
+
+gateway-build:
+	@echo "==> Building API Gateway image..."
+	podman compose -f $(CORE_COMPOSE) build api-gateway
+
+gateway-rebuild:
+	@echo "==> Rebuilding API Gateway image (no cache) and starting..."
+	podman compose -f $(CORE_COMPOSE) build --no-cache api-gateway
+	podman compose -f $(CORE_COMPOSE) up -d api-gateway
+
+gateway-restart:
+	@echo "==> Restarting API Gateway..."
+	podman compose -f $(CORE_COMPOSE) restart api-gateway
+
+gateway-clean:
+	@echo "==> Removing API Gateway stack (project scoped: containers + volumes + orphans)..."
+	podman compose -f $(CORE_COMPOSE) down api-gateway -v --remove-orphans || true
+
+gateway-stop:
+	@echo "==> Stopping API Gateway..."
+	podman compose -f $(CORE_COMPOSE) stop api-gateway
+
+gateway-start:
+	@echo "==> Starting API Gateway..."
+	podman compose -f $(CORE_COMPOSE) start api-gateway
+
+gateway-status:
+	@echo "==> API Gateway status:"
+	podman compose -f $(CORE_COMPOSE) ps api-gateway
+
+gateway-logs:
+	@echo "==> Tailing API Gateway logs..."
+	podman compose -f $(CORE_COMPOSE) logs -f api-gateway
+
 services-build:
 	@echo "==> Building service images..."
 	podman compose -f $(SERVICES_COMPOSE) build
@@ -208,6 +256,48 @@ services-clean:
 	@echo "✅ Services clean complete."
 
 # -------------------------
+# Core stack (infra + auth + org + gateway)
+# -------------------------
+CORE_COMPOSE := deploy/podman/compose.core.yml
+
+core-up:
+	@echo "==> Starting core stack (infra + auth + org + gateway)..."
+	./scripts/manage-infra.sh up
+	@sleep 3
+	podman compose -f $(CORE_COMPOSE) up -d
+	@echo "✅ Core stack is running. Gateway at http://localhost:3000"
+
+core-down:
+	@echo "==> Stopping core services..."
+	podman compose -f $(CORE_COMPOSE) down
+
+core-logs:
+	@echo "==> Tailing core services logs..."
+	podman compose -f $(CORE_COMPOSE) logs -f
+
+core-status:
+	@echo "==> Core services status:"
+	podman compose -f $(CORE_COMPOSE) ps
+
+core-build:
+	@echo "==> Building core service images..."
+	podman compose -f $(CORE_COMPOSE) build
+
+core-rebuild:
+	@echo "==> Rebuilding core services (no-cache) then starting..."
+	podman compose -f $(CORE_COMPOSE) build --no-cache
+	$(MAKE) core-up
+
+core-reset:
+	@echo "==> RESET core: clean -> up -> init-db -> healthy..."
+	podman compose -f $(CORE_COMPOSE) down -v --remove-orphans || true
+	./scripts/manage-infra.sh clean || true
+	$(MAKE) core-up
+	@sleep 5
+	$(MAKE) init-db
+	@echo "✅ Core stack reset complete."
+
+# -------------------------
 # Full stack orchestration
 # -------------------------
 stack-up:
@@ -215,12 +305,12 @@ stack-up:
 	./scripts/manage-infra.sh up
 	./scripts/manage-infra.sh dev-up
 	./scripts/manage-infra.sh security-up
-	podman compose -f $(SERVICES_COMPOSE) up -d
+	podman compose -f $(CORE_COMPOSE) up -d
 	@echo "✅ Full stack is running."
 
 stack-down:
 	@echo "==> Stopping FULL STACK (services -> security -> dev -> infra)..."
-	podman compose -f $(SERVICES_COMPOSE) down || true
+	podman compose -f $(CORE_COMPOSE) down || true
 	./scripts/manage-infra.sh security-down || true
 	./scripts/manage-infra.sh dev-down || true
 	./scripts/manage-infra.sh down || true
@@ -245,16 +335,16 @@ stack-logs:
 
 stack-build:
 	@echo "==> Building services (keeps cache)..."
-	podman compose -f $(SERVICES_COMPOSE) build
+	podman compose -f $(CORE_COMPOSE) build
 
 stack-rebuild:
 	@echo "==> Rebuilding services (no-cache) then starting FULL STACK..."
-	podman compose -f $(SERVICES_COMPOSE) build --no-cache
+	podman compose -f $(CORE_COMPOSE) build --no-cache
 	$(MAKE) stack-up
 
 stack-clean:
 	@echo "==> Cleaning FULL STACK (project scoped)..."
-	podman compose -f $(SERVICES_COMPOSE) down -v --remove-orphans || true
+	podman compose -f $(CORE_COMPOSE) down -v --remove-orphans || true
 	./scripts/manage-infra.sh clean
 	@echo "✅ Full stack clean complete."
 
@@ -285,6 +375,21 @@ test:
 	cd services/auth-service && go test -v ./...
 	@echo "--- organization-service ---"
 	cd services/organization-service && go test -v ./...
+	@echo "--- libs/typescript ---"
+	cd libs/typescript && npm test
+	@echo "--- api-gateway ---"
+	cd services/api-gateway && npm test
+
+test-ts:
+	@echo "==> Running TypeScript tests..."
+	@echo "--- libs/typescript ---"
+	cd libs/typescript && npm test
+	@echo "--- api-gateway ---"
+	cd services/api-gateway && npm test
+
+test-gateway:
+	@echo "==> Running API Gateway tests..."
+	cd services/api-gateway && npm test
 
 test-tenant-isolation:
 	@echo "==> Running tenant isolation tests..."
@@ -298,6 +403,10 @@ lint:
 	cd services/auth-service && golangci-lint run
 	@echo "--- organization-service ---"
 	cd services/organization-service && golangci-lint run
+	@echo "--- libs/typescript ---"
+	cd libs/typescript && npx tsc --noEmit
+	@echo "--- api-gateway ---"
+	cd services/api-gateway && npx tsc --noEmit
 
 # -------------------------
 # Security scans (scripts)

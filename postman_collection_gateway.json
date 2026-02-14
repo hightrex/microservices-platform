@@ -1,0 +1,849 @@
+{
+    "info": {
+        "_postman_id": "gateway-integration-collection",
+        "name": "API Gateway — Full Integration Suite",
+        "description": "End-to-end integration test collection for the API Gateway.\nCovers all Phase 1 endpoints, middleware features, and error handling.\nDesigned to run sequentially with Newman:\n  newman run postman_collection_gateway.json --env-var base_url=http://localhost:3000",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        { "key": "base_url", "value": "http://localhost:3000" },
+        { "key": "tenant_id", "value": "550e8400-e29b-41d4-a716-446655440000" },
+        { "key": "test_email", "value": "" },
+        { "key": "test_password", "value": "SecureP@ss123!" },
+        { "key": "access_token", "value": "" },
+        { "key": "refresh_token", "value": "" },
+        { "key": "user_id", "value": "" },
+        { "key": "org_id", "value": "" },
+        { "key": "dept_id", "value": "" },
+        { "key": "second_email", "value": "" },
+        { "key": "second_user_id", "value": "" },
+        { "key": "second_access_token", "value": "" }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Generate unique email on first run",
+                    "if (!pm.collectionVariables.get('test_email') || pm.collectionVariables.get('test_email') === '') {",
+                    "    const ts = Date.now();",
+                    "    pm.collectionVariables.set('test_email', `newman${ts}@test.com`);",
+                    "    pm.collectionVariables.set('second_email', `newman2nd${ts}@test.com`);",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "item": [
+        {
+            "name": "01 — Gateway Infrastructure",
+            "item": [
+                {
+                    "name": "Health Check",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "",
+                                    "const body = pm.response.json();",
+                                    "pm.test('Overall status is healthy', () => {",
+                                    "    pm.expect(body.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('Auth service dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'auth-service');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('Org service dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'org-service');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('Redis dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'redis');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+                    }
+                },
+                {
+                    "name": "Prometheus Metrics",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Contains gateway_requests_total metric', () => {",
+                                    "    pm.expect(pm.response.text()).to.include('gateway_requests_total');",
+                                    "});",
+                                    "pm.test('Contains gateway_request_duration_seconds metric', () => {",
+                                    "    pm.expect(pm.response.text()).to.include('gateway_request_duration_seconds');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{base_url}}/metrics", "host": ["{{base_url}}"], "path": ["metrics"] }
+                    }
+                },
+                {
+                    "name": "Security Headers Present",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('X-Request-ID header present', () => {",
+                                    "    pm.expect(pm.response.headers.has('x-request-id')).to.be.true;",
+                                    "});",
+                                    "pm.test('X-Content-Type-Options: nosniff', () => {",
+                                    "    pm.expect(pm.response.headers.get('x-content-type-options')).to.eql('nosniff');",
+                                    "});",
+                                    "pm.test('X-Frame-Options: SAMEORIGIN', () => {",
+                                    "    pm.expect(pm.response.headers.get('x-frame-options')).to.eql('SAMEORIGIN');",
+                                    "});",
+                                    "pm.test('Strict-Transport-Security present', () => {",
+                                    "    pm.expect(pm.response.headers.has('strict-transport-security')).to.be.true;",
+                                    "});",
+                                    "pm.test('Content-Security-Policy present', () => {",
+                                    "    pm.expect(pm.response.headers.has('content-security-policy')).to.be.true;",
+                                    "});",
+                                    "pm.test('Rate limit headers present', () => {",
+                                    "    pm.expect(pm.response.headers.has('x-ratelimit-limit')).to.be.true;",
+                                    "    pm.expect(pm.response.headers.has('x-ratelimit-remaining')).to.be.true;",
+                                    "    pm.expect(pm.response.headers.has('x-ratelimit-reset')).to.be.true;",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+                    }
+                },
+                {
+                    "name": "404 Unknown Route",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('Error code is NOT_FOUND', () => {",
+                                    "    pm.expect(body.success).to.be.false;",
+                                    "    pm.expect(body.error.code).to.eql('NOT_FOUND');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{base_url}}/api/v1/doesnotexist", "host": ["{{base_url}}"], "path": ["api","v1","doesnotexist"] }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "02 — JWT Enforcement",
+            "item": [
+                {
+                    "name": "No Token → 401",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('Error code UNAUTHORIZED', () => {",
+                                    "    pm.expect(body.success).to.be.false;",
+                                    "    pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api","v1","users"] }
+                    }
+                },
+                {
+                    "name": "Tampered Token → 401",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('Error code UNAUTHORIZED + invalid token message', () => {",
+                                    "    pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
+                                    "    pm.expect(body.error.message).to.include('Invalid token');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.tampered", "type": "text" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api","v1","users"] }
+                    }
+                },
+                {
+                    "name": "Basic Auth → 401",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                                    "pm.test('Error code UNAUTHORIZED', () => {",
+                                    "    pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Basic dXNlcjpwYXNz", "type": "text" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api","v1","users"] }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "03 — Auth Flow (Register → Login)",
+            "item": [
+                {
+                    "name": "Register Primary User",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 201 or 200', () => {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                                    "});",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Returns user ID', () => {",
+                                    "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                                    "    pm.collectionVariables.set('user_id', body.data.id);",
+                                    "});",
+                                    "pm.test('Returns correct email', () => {",
+                                    "    pm.expect(body.data.email).to.eql(pm.collectionVariables.get('test_email'));",
+                                    "});",
+                                    "pm.test('Status is active', () => pm.expect(body.data.status).to.eql('active'));",
+                                    "pm.test('Has created_at timestamp', () => pm.expect(body.data.created_at).to.be.a('string'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"first_name\": \"Newman\",\n    \"last_name\": \"TestUser\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] }
+                    }
+                },
+                {
+                    "name": "Register Duplicate Email → Rejected",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 400 or 409 (duplicate rejected)', () => {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                                    "});",
+                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"first_name\": \"Dup\",\n    \"last_name\": \"User\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] }
+                    }
+                },
+                {
+                    "name": "Register Validation Error (bad email)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"not-an-email\",\n    \"password\": \"x\",\n    \"first_name\": \"\",\n    \"last_name\": \"\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] }
+                    }
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Returns access_token', () => {",
+                                    "    pm.expect(body.data.access_token).to.be.a('string').and.not.empty;",
+                                    "    pm.collectionVariables.set('access_token', body.data.access_token);",
+                                    "});",
+                                    "pm.test('Returns refresh_token', () => {",
+                                    "    pm.expect(body.data.refresh_token).to.be.a('string').and.not.empty;",
+                                    "    pm.collectionVariables.set('refresh_token', body.data.refresh_token);",
+                                    "});",
+                                    "pm.test('token_type is Bearer', () => pm.expect(body.data.token_type).to.eql('Bearer'));",
+                                    "pm.test('expires_in is positive number', () => pm.expect(body.data.expires_in).to.be.above(0));",
+                                    "pm.test('User object returned with correct ID', () => {",
+                                    "    pm.expect(body.data.user.id).to.eql(pm.collectionVariables.get('user_id'));",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
+                    }
+                },
+                {
+                    "name": "Login Wrong Password → 401",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"WrongPassword123!\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "04 — User Management (Authenticated)",
+            "item": [
+                {
+                    "name": "List Users (paginated)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Returns items array', () => pm.expect(body.data.items).to.be.an('array'));",
+                                    "pm.test('Has total_count', () => pm.expect(body.data.total_count).to.be.a('number'));",
+                                    "pm.test('Has page', () => pm.expect(body.data.page).to.be.a('number'));",
+                                    "pm.test('Has page_size', () => pm.expect(body.data.page_size).to.be.a('number'));",
+                                    "pm.test('Has total_pages', () => pm.expect(body.data.total_pages).to.be.a('number'));",
+                                    "pm.test('Our user is in the list', () => {",
+                                    "    const found = body.data.items.find(u => u.id === pm.collectionVariables.get('user_id'));",
+                                    "    pm.expect(found).to.not.be.undefined;",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/users?page=1&page_size=20", "host": ["{{base_url}}"], "path": ["api","v1","users"], "query": [{"key":"page","value":"1"},{"key":"page_size","value":"20"}] }
+                    }
+                },
+                {
+                    "name": "Get User by ID",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Correct user ID', () => pm.expect(body.data.id).to.eql(pm.collectionVariables.get('user_id')));",
+                                    "pm.test('Has email field', () => pm.expect(body.data.email).to.be.a('string'));",
+                                    "pm.test('Has first_name', () => pm.expect(body.data.first_name).to.eql('Newman'));",
+                                    "pm.test('Has status=active', () => pm.expect(body.data.status).to.eql('active'));",
+                                    "pm.test('No password_hash in response', () => pm.expect(body.data.password_hash).to.be.undefined);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}"] }
+                    }
+                },
+                {
+                    "name": "Update User",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Name updated', () => {",
+                                    "    pm.expect(body.data.first_name).to.eql('UpdatedFirst');",
+                                    "    pm.expect(body.data.last_name).to.eql('UpdatedLast');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"first_name\": \"UpdatedFirst\",\n    \"last_name\": \"UpdatedLast\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}"] }
+                    }
+                },
+                {
+                    "name": "List User Sessions",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Returns sessions array', () => pm.expect(body.data).to.be.an('array'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}/sessions", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}","sessions"] }
+                    }
+                },
+                {
+                    "name": "Change Password",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "// Update stored password for subsequent logins",
+                                    "pm.collectionVariables.set('test_password', 'NewSecureP@ss456!');"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"old_password\": \"SecureP@ss123!\",\n    \"new_password\": \"NewSecureP@ss456!\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}/password", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}","password"] }
+                    }
+                },
+                {
+                    "name": "Re-Login with New Password",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('Login succeeds with new password', () => {",
+                                    "    pm.expect(body.success).to.be.true;",
+                                    "    pm.expect(body.data.access_token).to.be.a('string');",
+                                    "    pm.collectionVariables.set('access_token', body.data.access_token);",
+                                    "    pm.collectionVariables.set('refresh_token', body.data.refresh_token);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "05 — Organization Service (via Gateway)",
+            "item": [
+                {
+                    "name": "List Available Plans",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Returns array of plans', () => pm.expect(body.data).to.be.an('array'));",
+                                    "pm.test('Has at least 4 plans', () => pm.expect(body.data.length).to.be.at.least(4));",
+                                    "const names = body.data.map(p => p.name);",
+                                    "pm.test('Contains free plan', () => pm.expect(names).to.include('free'));",
+                                    "pm.test('Contains starter plan', () => pm.expect(names).to.include('starter'));",
+                                    "pm.test('Contains business plan', () => pm.expect(names).to.include('business'));",
+                                    "pm.test('Contains enterprise plan', () => pm.expect(names).to.include('enterprise'));",
+                                    "pm.test('Plan has expected fields', () => {",
+                                    "    const plan = body.data[0];",
+                                    "    pm.expect(plan).to.have.property('max_users');",
+                                    "    pm.expect(plan).to.have.property('max_storage_bytes');",
+                                    "    pm.expect(plan).to.have.property('available_modules');",
+                                    "    pm.expect(plan).to.have.property('price_monthly_cents');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/plans", "host": ["{{base_url}}"], "path": ["api","v1","plans"] }
+                    }
+                },
+                {
+                    "name": "Create Organization",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.collectionVariables.set('org_slug', 'newmanorg' + Date.now());"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 201 or 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                                    "pm.test('Returns org ID', () => {",
+                                    "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                                    "    pm.collectionVariables.set('org_id', body.data.id);",
+                                    "});",
+                                    "pm.test('Name matches', () => pm.expect(body.data.name).to.eql('Newman Test Org'));",
+                                    "pm.test('Plan is starter', () => pm.expect(body.data.plan).to.eql('starter'));",
+                                    "pm.test('Status is active', () => pm.expect(body.data.status).to.eql('active'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Newman Test Org\",\n    \"slug\": \"{{org_slug}}\",\n    \"plan\": \"starter\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/organizations", "host": ["{{base_url}}"], "path": ["api","v1","organizations"] }
+                    }
+                },
+                {
+                    "name": "Create Organization — Validation Error (empty name)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"\",\n    \"slug\": \"\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/organizations", "host": ["{{base_url}}"], "path": ["api","v1","organizations"] }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "06 — Phase 2/3 Placeholder Routes",
+            "item": [
+                {
+                    "name": "Notifications → Blocked",
+                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
+                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/notifications", "host": ["{{base_url}}"], "path": ["api","v1","notifications"] } }
+                },
+                {
+                    "name": "Billing → Blocked",
+                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
+                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/billing", "host": ["{{base_url}}"], "path": ["api","v1","billing"] } }
+                },
+                {
+                    "name": "Files → Blocked",
+                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
+                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/files", "host": ["{{base_url}}"], "path": ["api","v1","files"] } }
+                },
+                {
+                    "name": "Audit → Blocked",
+                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
+                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/audit", "host": ["{{base_url}}"], "path": ["api","v1","audit"] } }
+                },
+                {
+                    "name": "Analytics → Blocked",
+                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
+                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/analytics", "host": ["{{base_url}}"], "path": ["api","v1","analytics"] } }
+                }
+            ]
+        },
+        {
+            "name": "07 — Logout & Token Invalidation",
+            "item": [
+                {
+                    "name": "Logout",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/auth/logout", "host": ["{{base_url}}"], "path": ["api","v1","auth","logout"] }
+                    }
+                },
+                {
+                    "name": "Use Logged-Out Token → Rejected",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 401 (token blacklisted)', () => pm.response.to.have.status(401));",
+                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "url": { "raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api","v1","users"] }
+                    }
+                },
+                {
+                    "name": "Final Re-Login (verify account still works)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test('Login succeeds after logout', () => {",
+                                    "    pm.expect(body.success).to.be.true;",
+                                    "    pm.expect(body.data.access_token).to.be.a('string');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+                        },
+                        "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
+                    }
+                }
+            ]
+        }
+    ]
+}

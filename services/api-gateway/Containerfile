@@ -1,0 +1,59 @@
+# Build stage
+FROM docker.io/library/node:22-alpine AS builder
+
+WORKDIR /build
+
+# Copy shared TypeScript library first (for better caching)
+COPY libs/typescript/package.json libs/typescript/package-lock.json libs/typescript/
+COPY libs/typescript/tsconfig.json libs/typescript/
+COPY libs/typescript/src/ libs/typescript/src/
+WORKDIR /build/libs/typescript
+RUN npm ci --ignore-scripts && npm run build
+
+# Copy gateway package files
+WORKDIR /build/services/api-gateway
+COPY services/api-gateway/package.json services/api-gateway/package-lock.json ./
+
+# Install all deps (file: reference resolves to ../../libs/typescript)
+RUN npm ci --ignore-scripts
+
+# Copy gateway source
+COPY services/api-gateway/tsconfig.json ./
+COPY services/api-gateway/src/ src/
+
+# Build TypeScript
+RUN npx tsc
+
+# Prune dev dependencies
+RUN npm prune --production
+
+# Fix file: symlink — replace symlink with actual built shared lib
+RUN rm -rf node_modules/@microservices-platform/shared \
+    && mkdir -p node_modules/@microservices-platform/shared \
+    && cp /build/libs/typescript/package.json node_modules/@microservices-platform/shared/ \
+    && cp -r /build/libs/typescript/dist node_modules/@microservices-platform/shared/
+
+# Runtime stage
+FROM docker.io/library/node:22-alpine
+
+RUN apk add --no-cache wget \
+    && adduser -D -H -s /sbin/nologin appuser
+
+WORKDIR /app
+
+# Copy built output and production deps
+COPY --from=builder /build/services/api-gateway/dist/ dist/
+COPY --from=builder /build/services/api-gateway/node_modules/ node_modules/
+COPY --from=builder /build/services/api-gateway/package.json .
+
+# Use non-root user
+USER appuser
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:3000/health || exit 1
+
+ENTRYPOINT ["node", "dist/main.js"]

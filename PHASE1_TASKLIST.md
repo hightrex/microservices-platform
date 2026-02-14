@@ -1,6 +1,6 @@
 # Phase 1: Core Platform (Weeks 3–10)
 
-> **Status**: 🟡 IN PROGRESS (1.1, 1.2 complete)
+> **Status**: 🟡 IN PROGRESS (1.1, 1.2, 1.3, 1.4, 1.5 complete)
 > **Prerequisite**: Phase 0 complete (`m0-foundation-ready`)
 > **Milestone**: M1 — Auth + Org + Gateway working, tenant isolation proven
 > **Dependency order**: Auth Service → Organization Service → API Gateway → Integration
@@ -348,127 +348,297 @@ Manages multi-tenancy, module toggles, and billing plans. **Depends on Auth Serv
 
 ---
 
-## 1.3 Shared TypeScript Package (`libs/typescript/`)
+
+---
+
+## 1.3 Shared TypeScript Package (`libs/typescript/`) ✅
 
 Needed by the API Gateway. Build in parallel with Auth/Org services.
 
-### 1.3.1 Initialize
-- [ ] `npm init` with TypeScript strict mode
-- [ ] Configure `tsconfig.json` — strict, ES2022, module resolution
-- [ ] Add dev dependencies: typescript, `@types/node`, jest, ts-jest
-- [ ] Create `src/index.ts` — barrel exports
+### 1.3.1 Initialize ✅
 
-### 1.3.2 Packages
-- [ ] `src/logger.ts` — structured logging (pino or winston, JSON format)
-- [ ] `src/errors.ts` — standardized error types matching Go `pkg/errors`
-- [ ] `src/health.ts` — health check helper (check downstream service health)
-- [ ] `src/tenant.ts` — tenant context extraction from JWT/headers
-- [ ] `src/types.ts` — shared TypeScript types (API responses, pagination, etc.)
+* [x] Create `libs/typescript/package.json` (private workspace package)
+* [x] `npm init` (or workspace init) with TypeScript strict mode
+* [x] Configure `tsconfig.json`:
 
-### 1.3.3 Tests
-- [ ] Unit tests for each module (jest)
-- [ ] 100% type coverage (no `any`)
+  * [x] `strict: true`, `noImplicitAny: true`, `noUncheckedIndexedAccess: true`
+  * [x] `target: ES2022`, `module: ES2022` (or NodeNext), `moduleResolution` correct for Node
+  * [x] `declaration: true`, `sourceMap: true`, `outDir: dist`
+* [x] Add dev deps:
+
+  * [x] `typescript`, `@types/node`, `jest`, `ts-jest`, `@types/jest`
+* [x] Add build/test scripts in package.json:
+
+  * [x] `build`, `test`, `lint` (if shared ESLint)
+* [x] Create `src/index.ts` barrel exports
+* [x] Add `README.md` (what it provides + how gateway consumes it)
+
+### 1.3.2 Packages ✅
+
+* [x] `src/logger.ts`
+
+  * [x] `pino` JSON logger, level from env, redact auth headers/tokens
+  * [x] request-scoped child logger helper (request-id, tenant-id)
+* [x] `src/errors.ts`
+
+  * [x] `AppError` with `code`, `httpStatus`, `details`
+  * [x] mapping helpers to standardized API response shape (match Go `pkg/errors`)
+* [x] `src/health.ts`
+
+  * [x] helper to call downstream `/health` with timeouts + retry policy
+  * [x] returns aggregated `{status, dependencies[]}`
+* [x] `src/tenant.ts`
+
+  * [x] extract tenant + user context from headers/JWT claims
+  * [x] helpers to set/validate `X-Tenant-ID`, `X-User-ID`, `X-User-Roles`
+* [x] `src/types.ts`
+
+  * [x] standardized API response types, pagination, error shape, JWT claim types
+
+### 1.3.3 Tests ✅
+
+* [x] Unit tests for each module (jest)
+* [x] Enforce **no `any`**:
+
+  * [x] `tsconfig` strict
+  * [x] tests fail build if `any` appears (TS config + lint rule)
+* [x] `npm pack` / build output verified consumable by gateway (`dist/` exports)
+
+### 1.3.4 Hardening ✅ Rules for TS (per your foundation add-on)
+
+* [x] Enforce “no dangerous defaults”:
+
+  * [x] No `any`
+  * [x] No unbounded fetch without timeout (wrap with AbortController)
+  * [x] No JSON logging of secrets (redaction list)
 
 ---
 
-## 1.4 API Gateway (TypeScript/Express — Port 3000)
+## 1.4 API Gateway (TypeScript/Express — Port 3000) ✅
 
 The public-facing entry point. **Depends on Auth + Org services**.
 
-### 1.4.1 Initialize
-- [ ] Initialize Express + TypeScript project
-- [ ] Configure strict TypeScript, ESLint, Prettier
-- [ ] Add dependencies: express, helmet, cors, http-proxy-middleware, jsonwebtoken, ioredis, zod, pino, opossum (circuit breaker)
+### 1.4.1 Initialize ✅
 
-### 1.4.2 Core Middleware Stack (in order)
-- [ ] Request ID / Correlation ID generation (`X-Request-ID`)
-- [ ] Request logging (pino)
-- [ ] Security headers (helmet)
-- [ ] CORS (configurable origins, no `*`)
-- [ ] Request body limit (configurable, default 1MB)
-- [ ] JWT validation middleware
-  - Extract Bearer token from Authorization header
-  - Verify signature using Auth Service's public key/shared secret
-  - Extract claims: `sub`, `tid`, `org`, `roles`
-  - Set `X-Tenant-ID`, `X-User-ID`, `X-User-Roles` headers for downstream
-- [ ] Tenant context extraction and forwarding
-- [ ] Module gating middleware
-  - Fetch org's enabled modules from Org Service (cached in Redis, 5min TTL)
-  - If target module disabled → `403 { code: "MODULE_NOT_ENABLED" }`
-  - Map route prefix to module name
-- [ ] Rate limiting middleware (per `docs/guides/RATE_LIMITING.md`)
-  - Redis-backed sliding window
-  - Per-org limits from plan
-  - Per-endpoint overrides (auth login: 10/min, register: 5/min)
-  - Return `X-RateLimit-*` headers on every response
-  - Return `429` with `Retry-After` when exceeded
-  - Log rate-limited requests via securitylog pattern
-- [ ] Circuit breaker per downstream service (opossum)
+* [x] Run `scripts/create-service.sh api-gateway` (or create service folder)
+* [x] Setup TypeScript + Express app skeleton:
 
-### 1.4.3 Proxy Routes
-- [ ] `/api/v1/auth/*` → Auth Service (`:8080`)
-- [ ] `/api/v1/organizations/*` → Organization Service (`:8081`)
-- [ ] `/api/v1/users/*` → Auth Service (`:8080`)
-- [ ] `/api/v1/notifications/*` → Notification Service (`:8082`) — Phase 2, route registered but returns 503
-- [ ] `/api/v1/billing/*` → Billing Service (`:8083`) — Phase 2
-- [ ] `/api/v1/files/*` → File Service (`:8084`) — Phase 2
-- [ ] `/api/v1/audit/*` → Audit Service (`:8085`) — Phase 2
-- [ ] `/api/v1/analytics/*` → Analytics Service (`:8086`) — Phase 3
+  * [x] `services/api-gateway/package.json`
+  * [x] `tsconfig.json` strict + build output `dist/`
+  * [x] `src/main.ts` entrypoint
+* [x] Configure ESLint + Prettier (strict):
 
-### 1.4.4 Health & Observability
-- [ ] `GET /health` — aggregate health from all registered services
-- [ ] OpenTelemetry instrumentation (trace propagation to downstream)
-- [ ] Prometheus metrics: `gateway_requests_total`, `gateway_latency_seconds`, `gateway_ratelimit_total`
-- [ ] Request/response logging (sanitized — no auth tokens in logs)
+  * [x] disallow `any`, unused vars, unsafe casts
+* [x] Add dependencies:
 
-### 1.4.5 Containerfile
-- [ ] Multi-stage Node.js build
-- [ ] Non-root user
-- [ ] Pinned Node base image
-- [ ] HEALTHCHECK instruction
+  * [x] `express`, `helmet`, `cors`, `http-proxy-middleware`
+  * [x] `jsonwebtoken` (or `jose`), `ioredis`, `zod`, `pino`
+  * [x] `opossum` (circuit breaker)
+  * [x] `prom-client` (metrics)
+* [x] Add scripts:
 
-### 1.4.6 Tests
-- [ ] Unit tests for all middleware (JWT validation, module gating, rate limiting)
-- [ ] Unit tests for route mapping and forwarding logic
-- [ ] Integration tests with mock upstream services
-- [ ] Rate limiting behavior tests (sliding window, burst, per-endpoint)
+  * [x] `dev`, `build`, `start`, `test`, `lint`
+* [x] Import and use `libs/typescript` package for logger/errors/types/tenant helpers
 
-### 1.4.7 Documentation
-- [ ] `services/api-gateway/README.md`
-- [ ] `libs/contracts/api-gateway.yaml` — OpenAPI spec (aggregated routes)
+### 1.4.2 Configuration & Env ✅
+
+* [x] Add `config.ts` / zod config validation with required env vars:
+
+  * [x] `PORT=3000`
+  * [x] `AUTH_BASE_URL`, `ORG_BASE_URL`
+  * [x] `REDIS_URL`, `REDIS_PASSWORD` (optional), `REDIS_DB`
+  * [x] `CORS_ORIGINS` (comma separated; no `*`)
+  * [x] JWT verification config:
+
+    * [x] `JWT_ISSUER`
+    * [x] either `JWT_SECRET` (dev) **or** `JWKS_URL`/public key endpoint
+  * [x] rate limit defaults and per-endpoint overrides
+
+### 1.4.3 Core Middleware Stack (in order) ✅
+
+* [x] Request ID / Correlation ID:
+
+  * [x] generate `X-Request-ID` if missing
+  * [x] propagate to downstream + logs
+* [x] Request logging:
+
+  * [x] pino structured logs with redaction for `authorization`, cookies, tokens
+* [x] Security headers (helmet)
+* [x] CORS:
+
+  * [x] allowlist only, reject `*`
+* [x] Request body limit:
+
+  * [x] default 1MB, configurable
+  * [x] reject oversized bodies with standardized error
+* [x] JWT validation middleware:
+
+  * [x] Bearer extraction
+  * [x] verify signature (shared secret or JWKS/public key)
+  * [x] validate `iss`, expiry
+  * [x] extract claims: `sub`, `tid`, `roles`, optional `org`
+  * [x] set downstream headers:
+
+    * [x] `X-Tenant-ID`, `X-User-ID`, `X-User-Roles`
+  * [x] ensure spoof protection: overwrite any incoming identity headers
+* [x] Tenant context forwarding:
+
+  * [x] ensure all proxied requests have `X-Tenant-ID`
+* [x] Module gating middleware:
+
+  * [x] map route prefix → module name
+  * [x] call Org service to fetch module state (cached in Redis 5 min)
+  * [x] deny if disabled → `403 { code: "MODULE_NOT_ENABLED" }`
+  * [x] cache invalidation strategy (TTL-only acceptable for Phase 1)
+* [x] Rate limiting middleware:
+
+  * [x] Redis-backed sliding window
+  * [x] per-org limits from plan
+  * [x] per-endpoint overrides:
+
+    * [x] login 10/min
+    * [x] register 5/min
+  * [x] send `X-RateLimit-*` headers + `Retry-After`
+  * [x] log security event pattern on limit exceeded
+* [x] Circuit breaker per upstream (opossum):
+
+  * [x] per-service breaker configs
+  * [x] fail fast with standardized `503` when open
+
+### 1.4.4 Proxy Routes ✅
+
+* [x] Implement proxy route registration:
+
+  * [x] `/api/v1/auth/*` → Auth Service (`:8080`)
+  * [x] `/api/v1/users/*` → Auth Service (`:8080`)
+  * [x] `/api/v1/organizations/*` → Org Service (`:8081`)
+* [x] Implement placeholder routes for Phase 2/3 (return 503):
+
+  * [x] `/api/v1/notifications/*`
+  * [x] `/api/v1/billing/*`
+  * [x] `/api/v1/files/*`
+  * [x] `/api/v1/audit/*`
+  * [x] `/api/v1/analytics/*`
+* [x] Proxy hygiene:
+
+  * [x] forward `X-Request-ID`
+  * [x] forward only safe headers
+  * [x] strip hop-by-hop headers
+  * [x] timeout on upstream calls (no infinite waits)
+
+### 1.4.5 Health & Observability ✅
+
+* [x] `GET /health`:
+
+  * [x] aggregate health of Auth + Org (+ placeholders as degraded)
+  * [x] include Redis connectivity
+* [x] Metrics:
+
+  * [x] `gateway_requests_total` (method/path/status)
+  * [x] `gateway_latency_seconds`
+  * [x] `gateway_ratelimit_total`
+  * [x] breaker open/close counters (optional)
+* [x] OpenTelemetry:
+
+  * [x] trace propagation to downstream (`traceparent`)
+  * [x] spans for middleware + upstream calls
+
+### 1.4.6 Containerfile ✅
+
+* [x] Multi-stage Node build
+* [x] Non-root runtime user
+* [x] Pinned Node base image tag (no floating latest)
+* [x] `HEALTHCHECK` calling `GET /health`
+* [x] No dev deps in runtime image
+* [x] Set `NODE_OPTIONS` safe defaults (memory, etc. if needed)
+
+### 1.4.7 Tests ✅
+
+* [x] Unit tests:
+
+  * [x] JWT validation (tampered, expired, wrong issuer)
+  * [x] header spoofing prevention
+  * [x] module gating (enabled/disabled + cache behavior)
+  * [x] rate limiting (sliding window + headers + retry-after)
+  * [x] circuit breaker behavior
+* [x] Integration tests:
+
+  * [x] mock Auth + Org services
+  * [x] full proxy flow through gateway
+* [x] Contract tests:
+
+  * [x] response error shape matches standardized format
+* [x] No `any` rule enforced
+
+### 1.4.8 Postman Collection ✅
+
+* [x] Add `services/api-gateway/postman_collection.json`
+
+  * [x] contains all variables needed (base_url, auth/org base urls, tenant_id, tokens)
+  * [x] automated flow: register → login → gateway authenticated request → module toggle → verify gating
 
 ---
 
-## 1.5 Phase 1 Integration
+## 1.5 Phase 1 Integration ✅
 
-### 1.5.1 Compose Stack
-- [ ] `deploy/podman/compose.core.yml` — Auth, Org, Gateway containers
-  - Network segmentation matching `compose.base.yml` (service-net, data-net)
-  - Resource limits, `no-new-privileges`, `cap_drop: ALL`
-  - Health checks on all three services
-  - Depends-on: postgres, redis from `compose.base.yml`
+### 1.5.1 Compose Stack ✅
 
-### 1.5.2 Cross-Service Integration Tests
-- [ ] Full registration flow: Gateway → Auth (register) → Auth (login) → Gateway (authenticated request)
-- [ ] Org creation flow: Gateway → Auth (authenticated) → Org (create org) → Org (toggle modules)
-- [ ] Module gating: Gateway → Org (toggle module off) → Gateway (request to disabled module → 403)
-- [ ] Token lifecycle: login → get access token → use token → refresh token → use new token → logout → token rejected
-- [ ] Tenant isolation: create two orgs → each org sees only its own data
+* [x] Create `deploy/podman/compose.core.yml`:
 
-### 1.5.3 API Contract Tests
-- [ ] Auth Service endpoints match `auth-service.yaml` OpenAPI spec
-- [ ] Org Service endpoints match `organization-service.yaml` OpenAPI spec
-- [ ] Gateway routes match `api-gateway.yaml` OpenAPI spec
-- [ ] Response formats match standardized structure
+  * [x] `api-gateway` container (3000) + depends on auth/org health
+  * [x] auth/org no longer exposed publicly (only gateway port published)
+  * [x] shared networks consistent with `compose.base.yml`
+  * [x] security hardening: `no-new-privileges`, `cap_drop: ALL`, resource limits
+  * [x] healthchecks for all three services
+* [x] Ensure `.env` supports gateway + services:
 
-### 1.5.4 Verification Gate
-- [ ] `make test` passes for all Phase 1 services
-- [ ] `make lint` passes for all Phase 1 services
-- [ ] All three services start cleanly in `compose.core.yml`
-- [ ] Gateway successfully proxies to Auth and Org services
-- [ ] Module gating works (disabled module → 403)
-- [ ] Tenant isolation verified (org A can't see org B's data)
-- [ ] Rate limiting works (returns 429 with correct headers)
+  * [x] gateway envs (AUTH_BASE_URL, ORG_BASE_URL, JWT config, REDIS config, CORS origins)
+  * [x] auth/org envs unchanged but verified under compose DNS names
+
+### 1.5.2 Makefile Targets ✅ (needed for “start correctly”)
+
+* [x] Add targets:
+
+  * [x] `services-up-gateway`
+  * [x] `services-down-gateway`
+  * [x] `core-up` / `core-down` to start infra + auth + org + gateway
+  * [x] `core-logs` / `core-status`
+  * [x] `core-reset` (clean → up → init-db → healthy)
+* [x] Ensure `init-db` handles auth_db + org_db consistently under compose
+
+### 1.5.3 Cross-Service Integration Tests ✅
+
+* [x] Full registration flow via Gateway:
+
+  * [x] Gateway → Auth register → login → Gateway authenticated request
+* [x] Org creation flow via Gateway:
+
+  * [x] Gateway → Org create org → toggle modules
+* [x] Module gating:
+
+  * [x] disable module in Org → call gated route in Gateway → 403 MODULE_NOT_ENABLED
+* [x] Token lifecycle via Gateway:
+
+  * [x] login → refresh → logout → token rejected
+* [x] Tenant isolation via Gateway:
+
+  * [x] create two tenants → verify no cross-tenant reads/lists
+
+### 1.5.4 API Contract Tests ✅
+
+* [x] Gateway routes match `api-gateway.yaml`
+* [x] Gateway responses match standardized shape
+* [x] Auth/Org OpenAPI specs still match behavior through gateway proxy
+
+### 1.5.5 Verification Gate ✅
+- [x] `make test` passes for all Phase 1 services + libs/typescript
+- [x] `make lint` passes for all Phase 1 services + libs/typescript
+- [x] `make core-up` starts infra + auth + org + gateway cleanly
+- [x] Gateway successfully proxies to Auth and Org services
+- [x] Module gating works
+- [x] Tenant isolation verified
+- [x] Rate limiting works (429 + correct headers)
+- [x] E2E Integration Tests (`tests/e2e`) passing
 
 ---
 

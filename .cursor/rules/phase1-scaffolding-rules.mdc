@@ -1,9 +1,7 @@
 ---
-description: Go service scaffolding patterns for Phase 1 (Auth, Org services)
 globs: "services/**/*.go"
 alwaysApply: false
 ---
-
 # Phase 1 Go Service Scaffolding Patterns
 
 These patterns ensure every Go service follows the same structure, wiring order, and conventions. Use these patterns when creating or modifying `auth-service` and `organization-service`.

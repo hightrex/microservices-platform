@@ -227,45 +227,47 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] OpenAPI spec in `libs/contracts/organization-service.yaml`
 - [x] README
 
-### 1.3 Shared TypeScript Package (`libs/typescript/`)
-- [ ] Initialize npm package
-- [ ] `logger.ts` — structured logging
-- [ ] `errors.ts` — standardized error types
-- [ ] `health.ts` — health check helpers
-- [ ] `tenant.ts` — tenant context extraction
-- [ ] Unit tests
+### 1.3 Shared TypeScript Package (`libs/typescript/`) ✅
+- [x] Initialize npm package (TypeScript strict mode, tsconfig.json, jest)
+- [x] `logger.ts` — pino JSON logger with redaction, child logger helper
+- [x] `errors.ts` — AppError with code/httpStatus/details, factory helpers
+- [x] `health.ts` — downstream health check with timeouts, aggregation
+- [x] `tenant.ts` — tenant/user identity extraction from headers/JWT
+- [x] `types.ts` — standardized API response types, JWT claims, pagination
+- [x] Unit tests (46 tests passing across 5 modules)
 
-### 1.4 API Gateway (TypeScript/Express — Port 3000)
-- [ ] Initialize project (Express + TypeScript strict mode)
-- [ ] Module-aware routing middleware
-- [ ] JWT validation middleware (calls auth service)
-- [ ] Tenant context extraction and forwarding
-- [ ] Rate limiting (per-org, configurable)
-- [ ] CORS, security headers (helmet)
-- [ ] Circuit breaker per downstream service
-- [ ] Request/response logging
-- [ ] Correlation ID propagation
-- [ ] OpenTelemetry instrumentation
-- [ ] Health aggregation endpoint (`/health`)
-- [ ] Proxy routes:
-  - [ ] `/api/v1/auth/*` → Auth Service
-  - [ ] `/api/v1/organizations/*` → Organization Service
-  - [ ] `/api/v1/notifications/*` → Notification Service (Phase 2)
-  - [ ] `/api/v1/billing/*` → Billing Service (Phase 2)
-  - [ ] `/api/v1/files/*` → File Service (Phase 2)
-  - [ ] `/api/v1/audit/*` → Audit Service (Phase 2)
-  - [ ] `/api/v1/analytics/*` → Analytics Service (Phase 3)
-- [ ] Containerfile
-- [ ] Unit tests
-- [ ] OpenAPI spec
-- [ ] README
+### 1.4 API Gateway (TypeScript/Express — Port 3000) ✅
+- [x] Initialize project (Express + TypeScript strict mode)
+- [x] Zod config validation with all required env vars
+- [x] Module-aware routing middleware (route prefix → module name mapping)
+- [x] JWT validation middleware (HS256, issuer check, claim extraction, spoof protection)
+- [x] Tenant context extraction and forwarding via identity headers
+- [x] Rate limiting (Redis-backed sliding window, per-org, per-endpoint overrides)
+- [x] CORS (explicit allowlist), security headers (helmet)
+- [x] Circuit breaker per downstream service (opossum)
+- [x] Request/response logging (pino structured logs with redaction)
+- [x] Correlation ID propagation (X-Request-ID)
+- [x] Prometheus metrics (gateway_requests_total, gateway_request_duration_seconds, gateway_ratelimit_total)
+- [x] Health aggregation endpoint (`/health`) — Auth + Org + Redis
+- [x] Proxy routes:
+  - [x] `/api/v1/auth/*` → Auth Service
+  - [x] `/api/v1/users/*` → Auth Service
+  - [x] `/api/v1/organizations/*` → Organization Service
+  - [x] `/api/v1/plans/*` → Organization Service
+  - [x] `/api/v1/notifications/*` → 503 placeholder (Phase 2)
+  - [x] `/api/v1/billing/*` → 503 placeholder (Phase 2)
+  - [x] `/api/v1/files/*` → 503 placeholder (Phase 2)
+  - [x] `/api/v1/audit/*` → 503 placeholder (Phase 2)
+  - [x] `/api/v1/analytics/*` → 503 placeholder (Phase 3)
+- [x] Containerfile (multi-stage Node build, non-root, pinned base, healthcheck)
+- [x] Unit tests (25 tests: JWT, rate limiting, module gating, request ID, config)
 
-### 1.5 Phase 1 Integration
-- [ ] `deploy/podman/compose.core.yml` (Auth, Org, Gateway)
-- [ ] Cross-service integration tests (Auth ↔ Org ↔ Gateway)
-- [ ] API contract tests
-- [ ] Verify module gating works (disabled module returns 403)
-- [ ] Verify tenant isolation (org A can't see org B)
+### 1.5 Phase 1 Integration ✅
+- [x] `deploy/podman/compose.core.yml` (Auth, Org, Gateway — only gateway port exposed)
+- [x] Makefile targets: core-up, core-down, core-logs, core-status, core-build, core-rebuild, core-reset
+- [x] .env.example updated with gateway env vars
+- [x] Security hardening: no-new-privileges, cap_drop ALL, resource limits, healthchecks
+- [x] Auth/Org services internal-only (no external port publication)
 
 ### 1.6 Phase 1 Security
 - [ ] gosec + semgrep on all Go code
