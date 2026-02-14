@@ -1,74 +1,304 @@
-.PHONY: infra-up infra-core-up infra-down infra-logs infra-clean infra-purge \
-       services-up init-db setup test test-tenant-isolation lint \
-       security-all security-sast security-dast security-trivy \
-       security-up security-down
+.PHONY: \
+	help \
+	infra-up infra-core-up infra-down infra-restart infra-status infra-ps infra-logs infra-clean infra-purge infra-all \
+	infra-dev-up infra-dev-down infra-dev-restart \
+	infra-security-up infra-security-down infra-security-restart infra-security-logs \
+	services-up services-down services-restart services-status services-ps services-logs services-build services-rebuild services-clean services-pull \
+	stack-up stack-down stack-restart stack-status stack-logs stack-build stack-rebuild stack-clean stack-reset \
+	init-db setup test test-tenant-isolation lint \
+	security-sast security-trivy security-dast security-all security-up security-down \
+	all
 
-# Infrastructure
+# -------------------------
+# Help
+# -------------------------
+help:
+	@echo ""
+	@echo "========================"
+	@echo " Microservices Platform"
+	@echo "========================"
+	@echo ""
+	@echo "Infra:"
+	@echo "  make infra-up               Start base infrastructure stack"
+	@echo "  make infra-core-up          Start only core infra (postgres, redis, minio)"
+	@echo "  make infra-down             Stop base infrastructure stack"
+	@echo "  make infra-restart          Restart base infrastructure stack"
+	@echo "  make infra-status           Show status of infra/dev/security stacks"
+	@echo "  make infra-logs             Tail base infra logs"
+	@echo "  make infra-clean            Remove project-scoped infra resources (safe-ish)"
+	@echo "  make infra-purge            DANGER: remove ALL podman resources for this user"
+	@echo "  make infra-all              Alias for infra-up"
+	@echo ""
+	@echo "Dev tools:"
+	@echo "  make infra-dev-up           Start dev tools stack"
+	@echo "  make infra-dev-down         Stop dev tools stack"
+	@echo "  make infra-dev-restart      Restart dev tools stack"
+	@echo ""
+	@echo "Security tools (infrastructure):"
+	@echo "  make infra-security-up      Start security tools stack"
+	@echo "  make infra-security-down    Stop security tools stack"
+	@echo "  make infra-security-restart Restart security tools stack"
+	@echo "  make infra-security-logs    Tail security tools logs"
+	@echo ""
+	@echo "Services (microservices stack):"
+	@echo "  make services-up            Start all services"
+	@echo "  make services-down          Stop all services"
+	@echo "  make services-restart       Restart all services"
+	@echo "  make services-status        Show services status"
+	@echo "  make services-logs          Tail services logs"
+	@echo "  make services-build         Build services images"
+	@echo "  make services-rebuild       Rebuild services images (no-cache) then start"
+	@echo "  make services-clean         Remove services stack + volumes (project scoped)"
+	@echo "  make services-pull          Pull referenced images (if any)"
+	@echo ""
+	@echo "Full stack (infra + dev + security + services):"
+	@echo "  make stack-up               Start everything"
+	@echo "  make stack-down             Stop everything (safe order)"
+	@echo "  make stack-restart          Restart everything"
+	@echo "  make stack-status           Status of everything"
+	@echo "  make stack-logs             Tail logs (infra + services)"
+	@echo "  make stack-build            Build services images (keeps caches)"
+	@echo "  make stack-rebuild          Rebuild services images (no-cache) then start everything"
+	@echo "  make stack-clean            Remove project-scoped resources (infra + services)"
+	@echo "  make stack-reset            Clean then start everything from scratch"
+	@echo ""
+	@echo "Dev workflow:"
+	@echo "  make setup                  Run dev setup script"
+	@echo "  make init-db                Initialize databases"
+	@echo "  make test                   Run Go tests"
+	@echo "  make lint                   Run golangci-lint"
+	@echo ""
+	@echo "Security scans:"
+	@echo "  make security-sast          Run SAST"
+	@echo "  make security-trivy         Run Trivy image scans"
+	@echo "  make security-dast          Run ZAP DAST"
+	@echo "  make security-all           Run all scans"
+	@echo ""
+	@echo "Bootstrap:"
+	@echo "  make all                    setup + infra-up + init-db + test + security-sast"
+	@echo ""
+
+# -------------------------
+# Infra
+# -------------------------
 infra-up:
+	@echo "==> Starting infrastructure..."
 	./scripts/manage-infra.sh up
 
+infra-all: infra-up
+
 infra-core-up:
+	@echo "==> Starting core infrastructure (postgres, redis, minio)..."
 	./scripts/manage-infra.sh core-up
 
 infra-down:
+	@echo "==> Stopping infrastructure..."
 	./scripts/manage-infra.sh down
 
+infra-restart:
+	@echo "==> Restarting infrastructure..."
+	./scripts/manage-infra.sh down || true
+	./scripts/manage-infra.sh up
+
+infra-status infra-ps:
+	@echo "==> Showing infra/dev/security status..."
+	./scripts/manage-infra.sh status
+
 infra-logs:
+	@echo "==> Tailing infrastructure logs..."
 	./scripts/manage-infra.sh logs
 
 infra-clean:
+	@echo "==> Cleaning project-scoped infrastructure resources..."
 	./scripts/manage-infra.sh clean
 
 infra-purge:
+	@echo "==> DANGER: Purging ALL podman resources..."
 	./scripts/manage-infra.sh purge
 
-# Services (placeholder for now)
-services-up:
-	@echo "Starting services..."
-	podman compose -f deploy/podman/compose.services.yml up -d
+# -------------------------
+# Dev tools (infra)
+# -------------------------
+infra-dev-up:
+	@echo "==> Starting dev tools..."
+	./scripts/manage-infra.sh dev-up
 
+infra-dev-down:
+	@echo "==> Stopping dev tools..."
+	./scripts/manage-infra.sh dev-down
+
+infra-dev-restart:
+	@echo "==> Restarting dev tools..."
+	./scripts/manage-infra.sh dev-down || true
+	./scripts/manage-infra.sh dev-up
+
+# -------------------------
+# Security tools (infra)
+# -------------------------
+infra-security-up:
+	@echo "==> Starting security tools..."
+	./scripts/manage-infra.sh security-up
+
+infra-security-down:
+	@echo "==> Stopping security tools..."
+	./scripts/manage-infra.sh security-down
+
+infra-security-restart:
+	@echo "==> Restarting security tools..."
+	./scripts/manage-infra.sh security-down || true
+	./scripts/manage-infra.sh security-up
+
+infra-security-logs:
+	@echo "==> Tailing security tools logs..."
+	./scripts/manage-infra.sh security-logs
+
+# -------------------------
+# Services (compose.services.yml)
+# -------------------------
+SERVICES_COMPOSE := deploy/podman/compose.services.yml
+
+services-up:
+	@echo "==> Starting services..."
+	podman compose -f $(SERVICES_COMPOSE) up -d
+
+services-down:
+	@echo "==> Stopping services..."
+	podman compose -f $(SERVICES_COMPOSE) down
+
+services-restart:
+	@echo "==> Restarting services..."
+	podman compose -f $(SERVICES_COMPOSE) down || true
+	podman compose -f $(SERVICES_COMPOSE) up -d
+
+services-status services-ps:
+	@echo "==> Services status:"
+	podman compose -f $(SERVICES_COMPOSE) ps
+
+services-logs:
+	@echo "==> Tailing services logs..."
+	podman compose -f $(SERVICES_COMPOSE) logs -f
+
+services-pull:
+	@echo "==> Pulling service images (if applicable)..."
+	podman compose -f $(SERVICES_COMPOSE) pull || true
+
+services-build:
+	@echo "==> Building service images..."
+	podman compose -f $(SERVICES_COMPOSE) build
+
+services-rebuild:
+	@echo "==> Rebuilding service images (no cache) and starting..."
+	podman compose -f $(SERVICES_COMPOSE) build --no-cache
+	podman compose -f $(SERVICES_COMPOSE) up -d
+
+services-clean:
+	@echo "==> Removing services stack (project scoped: containers + volumes + orphans)..."
+	podman compose -f $(SERVICES_COMPOSE) down -v --remove-orphans || true
+	@echo "✅ Services clean complete."
+
+# -------------------------
+# Full stack orchestration
+# -------------------------
+stack-up:
+	@echo "==> Starting FULL STACK (infra + dev + security + services)..."
+	./scripts/manage-infra.sh up
+	./scripts/manage-infra.sh dev-up
+	./scripts/manage-infra.sh security-up
+	podman compose -f $(SERVICES_COMPOSE) up -d
+	@echo "✅ Full stack is running."
+
+stack-down:
+	@echo "==> Stopping FULL STACK (services -> security -> dev -> infra)..."
+	podman compose -f $(SERVICES_COMPOSE) down || true
+	./scripts/manage-infra.sh security-down || true
+	./scripts/manage-infra.sh dev-down || true
+	./scripts/manage-infra.sh down || true
+	@echo "✅ Full stack stopped."
+
+stack-restart:
+	@echo "==> Restarting FULL STACK..."
+	$(MAKE) stack-down
+	$(MAKE) stack-up
+
+stack-status:
+	@echo "==> Full stack status:"
+	./scripts/manage-infra.sh status
+	@echo ""
+	@echo "=== Services ==="
+	podman compose -f $(SERVICES_COMPOSE) ps
+
+stack-logs:
+	@echo "==> Tailing FULL STACK logs (infra then services)..."
+	@echo "---- INFRA LOGS (Ctrl+C to stop) ----"
+	./scripts/manage-infra.sh logs
+
+stack-build:
+	@echo "==> Building services (keeps cache)..."
+	podman compose -f $(SERVICES_COMPOSE) build
+
+stack-rebuild:
+	@echo "==> Rebuilding services (no-cache) then starting FULL STACK..."
+	podman compose -f $(SERVICES_COMPOSE) build --no-cache
+	$(MAKE) stack-up
+
+stack-clean:
+	@echo "==> Cleaning FULL STACK (project scoped)..."
+	podman compose -f $(SERVICES_COMPOSE) down -v --remove-orphans || true
+	./scripts/manage-infra.sh clean
+	@echo "✅ Full stack clean complete."
+
+stack-reset:
+	@echo "==> RESET: cleaning then starting everything..."
+	$(MAKE) stack-clean
+	$(MAKE) stack-up
+
+# -------------------------
 # Development
+# -------------------------
 init-db:
+	@echo "==> Initializing databases..."
 	./scripts/init-databases.sh
 
 setup:
+	@echo "==> Running dev setup..."
 	./scripts/setup-dev.sh
 
-# Testing & Verification
+# -------------------------
+# Testing & lint
+# -------------------------
 test:
-	@echo "Running tests..."
+	@echo "==> Running tests..."
 	cd libs/go && go test -v ./...
-	# cd services/auth-service && go test -v ./...
 
 test-tenant-isolation:
-	@echo "Running tenant isolation tests..."
+	@echo "==> Running tenant isolation tests..."
 	cd tests/security/tenant-isolation && go test -v -count=1 ./...
 
 lint:
-	@echo "Running linters..."
+	@echo "==> Running linters..."
 	cd libs/go && golangci-lint run
-	# cd services/auth-service && golangci-lint run
 
-# Security
+# -------------------------
+# Security scans (scripts)
+# -------------------------
 security-sast:
-	@echo "Running SAST..."
+	@echo "==> Running SAST..."
 	./scripts/run-security-scan.sh --sast-only
 
 security-trivy:
-	@echo "Running Trivy container image scans..."
+	@echo "==> Running Trivy image scans..."
 	./scripts/run-security-scan.sh --trivy-only
 
 security-dast:
-	@echo "Running DAST (ZAP)..."
+	@echo "==> Running DAST (ZAP)..."
 	./scripts/run-security-scan.sh --dast-only
 
 security-all: security-sast security-trivy security-dast
 
-security-up:
-	./scripts/manage-infra.sh security-up
+security-up: infra-security-up
+security-down: infra-security-down
 
-security-down:
-	./scripts/manage-infra.sh security-down
-
-# Helper to run everything from scratch
+# -------------------------
+# Bootstrap helper
+# -------------------------
 all: setup infra-up init-db test security-sast
