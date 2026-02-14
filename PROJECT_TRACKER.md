@@ -159,15 +159,7 @@ Before scaffolding, verify these are installed. Run each command to check.
 
 ## Phase 1: Core Platform (Week 3-10)
 
-### 1.1 Shared TypeScript Package (`libs/typescript/`)
-- [ ] Initialize npm package
-- [ ] `logger.ts` — structured logging
-- [ ] `errors.ts` — standardized error types
-- [ ] `health.ts` — health check helpers
-- [ ] `tenant.ts` — tenant context extraction
-- [ ] Unit tests
-
-### 1.2 Auth & Identity Service (Go/Gin — Port 8080) ✅
+### 1.1 Auth & Identity Service (Go/Gin — Port 8080) ✅
 - [x] Scaffold with `create-service.sh`
 - [x] Database migrations:
   - [x] `001_create_users_table.sql`
@@ -199,7 +191,7 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] OpenAPI spec in `libs/contracts/auth-service.yaml`
 - [x] README
 
-### 1.3 Organization Service (Go/Gin — Port 8081)
+### 1.2 Organization Service (Go/Gin — Port 8081)
 - [ ] Scaffold with `create-service.sh`
 - [ ] Database migrations:
   - [ ] `001_create_organizations_table.sql`
@@ -230,6 +222,14 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [ ] Unit + integration tests
 - [ ] OpenAPI spec in `libs/contracts/organization-service.yaml`
 - [ ] README
+
+### 1.3 Shared TypeScript Package (`libs/typescript/`)
+- [ ] Initialize npm package
+- [ ] `logger.ts` — structured logging
+- [ ] `errors.ts` — standardized error types
+- [ ] `health.ts` — health check helpers
+- [ ] `tenant.ts` — tenant context extraction
+- [ ] Unit tests
 
 ### 1.4 API Gateway (TypeScript/Express — Port 3000)
 - [ ] Initialize project (Express + TypeScript strict mode)

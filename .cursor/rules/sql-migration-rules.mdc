@@ -1,7 +1,7 @@
 ---
 description: SQL migration file conventions for schema management
 globs: "**/migrations/*.sql"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # SQL Migration Rules

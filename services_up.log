@@ -1,0 +1,72 @@
+Starting services...
+podman compose -f deploy/podman/compose.services.yml up -d
+[4m>>>> Executing external compose provider "/usr/bin/podman-compose". Please see podman-compose(1) for how to disable this message. <<<<
+
+[0m[1/2] STEP 1/11: FROM docker.io/library/golang:1.24-alpine AS builder
+[1/2] STEP 2/11: RUN apk add --no-cache git ca-certificates
+--> Using cache 397602897987411b0512f2e5e3fa6455b53c3ea3c3beda07b624372a3ac57d78
+--> 397602897987
+[1/2] STEP 3/11: WORKDIR /build
+--> Using cache 5e648ae24adcf6e7d0944c3debc56eeda670ea025326cbf1d4e80b02d5cfd48b
+--> 5e648ae24adc
+[1/2] STEP 4/11: COPY libs/go/ libs/go/
+--> Using cache d07fa5203ec8de1dc16f501eb8e6c4d2573cd5e87e3d0feb72415088ab63e098
+--> d07fa5203ec8
+[1/2] STEP 5/11: COPY services/auth-service/go.mod services/auth-service/go.sum services/auth-service/
+--> Using cache 14e4390d5fc25f805db8f0abcd9ab5db7a4d34fc81798e39d6989f1b4b1f7eda
+--> 14e4390d5fc2
+[1/2] STEP 6/11: WORKDIR /build/services/auth-service
+--> Using cache 221cebc7fb8e884d83315ce04bc86d397fcccaf6a58f26af5dcc64d01b3d52c5
+--> 221cebc7fb8e
+[1/2] STEP 7/11: RUN go mod download
+--> Using cache 5d94994d43c4532e5a2d55eb8e0efc61f4517132389032b53cbdcb97a20e8028
+--> 5d94994d43c4
+[1/2] STEP 8/11: WORKDIR /build
+--> Using cache d20a3892f003d3498d73bb6404a4b2052f509eb84ec70d634c556eb3c521e560
+--> d20a3892f003
+[1/2] STEP 9/11: COPY services/auth-service/ services/auth-service/
+--> Using cache 8d6ca65a2e1615c3b2c501a1812a94a93dfd5e1ea4cf142f9e6e8724f51c9fe9
+--> 8d6ca65a2e16
+[1/2] STEP 10/11: WORKDIR /build/services/auth-service
+--> Using cache 6fbb298f24521bc873834e61c65e6d4dcaa6492b276cafcaacc1c67b2faa3446
+--> 6fbb298f2452
+[1/2] STEP 11/11: RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /auth-service ./cmd/main.go
+--> 0d38eda767e9
+[2/2] STEP 1/10: FROM docker.io/library/alpine:3.21.2
+Trying to pull docker.io/library/alpine:3.21.2...
+Getting image source signatures
+Copying blob sha256:1f3e46996e2966e4faa5846e56e76e3748b7315e2ded61476c24403d592134f0
+Copying config sha256:b0c9d60fc5e3fa2319a86ccc1cdf34c94c7e69766e8cebfb4111f7e54f39e8ff
+Writing manifest to image destination
+[2/2] STEP 2/10: RUN apk add --no-cache ca-certificates tzdata     && adduser -D -H -s /sbin/nologin appuser
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/APKINDEX.tar.gz
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.21/community/x86_64/APKINDEX.tar.gz
+(1/2) Installing ca-certificates (20250911-r0)
+(2/2) Installing tzdata (2025c-r0)
+Executing busybox-1.37.0-r9.trigger
+Executing ca-certificates-20250911-r0.trigger
+OK: 8 MiB in 17 packages
+--> 2a8a360aa1fa
+[2/2] STEP 3/10: WORKDIR /app
+--> abbcffe2679b
+[2/2] STEP 4/10: COPY --from=builder /auth-service .
+--> a2e6759356db
+[2/2] STEP 5/10: COPY services/auth-service/migrations/ migrations/
+--> f899e91607aa
+[2/2] STEP 6/10: COPY services/auth-service/config.yaml .
+--> 161436a2847c
+[2/2] STEP 7/10: USER appuser
+--> 260381dd54ac
+[2/2] STEP 8/10: EXPOSE 8080
+--> 8781e6c234f6
+[2/2] STEP 9/10: HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3     CMD wget -qO- http://localhost:8080/health || exit 1
+time="2026-02-14T10:45:27+08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+--> e86ee0880d4a
+[2/2] STEP 10/10: ENTRYPOINT ["./auth-service"]
+[2/2] COMMIT podman_auth-service
+time="2026-02-14T10:45:27+08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+--> 1965ff19dc57
+Successfully tagged localhost/podman_auth-service:latest
+1965ff19dc578becc62ce1a51b6ba8de02f69e9052c297d9ba84b9554e7ad01b
+a997f47832cfffd603e13194436f179e3588ba91c74aa3cd4ddb91d0fb9ebbe6
+platform-auth-service

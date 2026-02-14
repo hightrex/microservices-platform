@@ -1,7 +1,7 @@
 ---
 description: Go service scaffolding patterns for Phase 1 (Auth, Org services)
 globs: "services/**/*.go"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Phase 1 Go Service Scaffolding Patterns

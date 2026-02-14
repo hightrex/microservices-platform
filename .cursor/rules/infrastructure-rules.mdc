@@ -11,6 +11,9 @@ alwaysApply: false
 - **Tagging:** Use specific tags/SHAs (e.g., `postgres:16-alpine`), never `latest`.
 - **User:** Run services as non-root user (`USER nobody`).
 - **Optimization:** Use multi-stage builds.
+- **Avoid Pinning Alpine Packages:** Do not pin specific package versions in `apk add` (e.g., `git=2.47.1-r0`) unless you pin the Alpine repository snapshot, as packages roll quickly.
+- **Network Names:** Explicitly name networks in `compose.yaml` (e.g., `name: podman_app-net`) to avoid project name prefix conflicts when using multiple compose files.
+- **Registries:** Use reliable registries. For MinIO, use `quay.io` (e.g., `quay.io/minio/minio`) as checks on Docker Hub may be restricted.
 
 ## Kubernetes
 - **Configs:** Use structural logging and JSON output for pods.

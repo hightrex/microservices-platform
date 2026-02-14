@@ -65,7 +65,7 @@ services:
     cpus: 0.5
 
   minio:
-    image: docker.io/minio/minio:RELEASE.2025-01-20T14-44-11Z
+    image: quay.io/minio/minio:RELEASE.2024-01-31T20-20-33Z
     container_name: platform-minio
     restart: unless-stopped
     environment:
@@ -95,7 +95,7 @@ services:
     cpus: 1.0
 
   jaeger:
-    image: docker.io/jaegertracing/all-in-one:1.64
+    image: docker.io/jaegertracing/all-in-one:1.57
     container_name: platform-jaeger
     restart: unless-stopped
     ports:
@@ -165,10 +165,13 @@ networks:
   data-net:
     driver: bridge
     internal: true
+    name: podman_data-net
   monitoring-net:
     driver: bridge
+    name: podman_monitoring-net
   app-net:
     driver: bridge
+    name: podman_app-net
 
 volumes:
   postgres_data:

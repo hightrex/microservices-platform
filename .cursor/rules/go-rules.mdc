@@ -1,7 +1,7 @@
 ---
 description: Code patterns and standards for Go services
 globs: "**/*.go"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Go Rules
