@@ -1,0 +1,47 @@
+# Build stage
+FROM docker.io/library/golang:1.24-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /build
+
+# Copy shared libs first for better caching
+COPY libs/go/ libs/go/
+
+# Copy service module files
+COPY services/organization-service/go.mod services/organization-service/go.sum services/organization-service/
+
+# Download dependencies
+WORKDIR /build/services/organization-service
+RUN go mod download
+
+# Copy service source
+WORKDIR /build
+COPY services/organization-service/ services/organization-service/
+
+# Build
+WORKDIR /build/services/organization-service
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /organization-service ./cmd/main.go
+
+# Runtime stage
+FROM docker.io/library/alpine:3.21.2
+
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -D -H -s /sbin/nologin appuser
+
+WORKDIR /app
+
+# Copy binary and migrations
+COPY --from=builder /organization-service .
+COPY services/organization-service/migrations/ migrations/
+COPY services/organization-service/config.yaml .
+
+# Use non-root user
+USER appuser
+
+EXPOSE 8081
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://localhost:8081/health || exit 1
+
+ENTRYPOINT ["./organization-service"]

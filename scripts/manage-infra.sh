@@ -171,6 +171,9 @@ case "$cmd" in
     echo ""
     echo "=== Security tools ==="
     podman compose -f "$SECURITY_COMPOSE_FILE" $COMPOSE_OPTS ps 2>/dev/null || echo "(security tools not running)"
+    echo ""
+    echo "=== Microservices ==="
+    podman compose -f "deploy/podman/compose.services.yml" $COMPOSE_OPTS ps 2>/dev/null || echo "(services not running)"
     ;;
 
   clean)

@@ -1,6 +1,6 @@
 # Phase 1: Core Platform (Weeks 3–10)
 
-> **Status**: 🟡 IN PROGRESS (1.1 complete)
+> **Status**: 🟡 IN PROGRESS (1.1, 1.2 complete)
 > **Prerequisite**: Phase 0 complete (`m0-foundation-ready`)
 > **Milestone**: M1 — Auth + Org + Gateway working, tenant isolation proven
 > **Dependency order**: Auth Service → Organization Service → API Gateway → Integration
@@ -193,132 +193,132 @@ No stubs — real working logic.
 
 ---
 
-## 1.2 Organization Service (Go/Gin — Port 8081)
+## 1.2 Organization Service (Go/Gin — Port 8081) ✅
 
 Manages multi-tenancy, module toggles, and billing plans. **Depends on Auth Service** for user identity.
 
-### 1.2.1 Scaffold & Configuration
-- [ ] Run `scripts/create-service.sh organization-service`
-- [ ] Create `internal/config/config.go` — service config struct
-- [ ] Create `config.yaml` — default dev configuration
-- [ ] Verify `go build ./...` compiles
+### 1.2.1 Scaffold & Configuration ✅
+- [x] Run `scripts/create-service.sh organization-service`
+- [x] Create `internal/config/config.go` — service config struct
+- [x] Create `config.yaml` — default dev configuration
+- [x] Verify `go build ./...` compiles
 
-### 1.2.2 Database Migrations
-- [ ] `migrations/001_create_organizations_table.up.sql`
+### 1.2.2 Database Migrations ✅
+- [x] `migrations/001_create_organizations_table.up.sql`
   - Columns: `id`, `name`, `slug` (URL-friendly unique), `owner_user_id`, `plan` (enum: free/starter/business/enterprise), `status` (active/suspended/deleted), `settings` (JSONB — timezone, locale, branding), `max_users`, `max_storage_bytes`, `created_at`, `updated_at`
   - Indexes: `(slug)` UNIQUE, `(status)`
   - Note: `id` IS the `tenant_id` for downstream services
-- [ ] `migrations/001_create_organizations_table.down.sql`
-- [ ] `migrations/002_create_org_modules_table.up.sql`
+- [x] `migrations/001_create_organizations_table.down.sql`
+- [x] `migrations/002_create_org_modules_table.up.sql`
   - Columns: `id`, `org_id`, `module_name` (enum: notifications/billing/file_management/audit_logging/analytics), `enabled`, `config` (JSONB — per-module settings), `enabled_at`, `disabled_at`, `created_at`, `updated_at`
   - Indexes: `(org_id, module_name)` UNIQUE
-- [ ] `migrations/002_create_org_modules_table.down.sql`
-- [ ] `migrations/003_create_org_members_table.up.sql`
+- [x] `migrations/002_create_org_modules_table.down.sql`
+- [x] `migrations/003_create_org_members_table.up.sql`
   - Columns: `id`, `org_id`, `user_id`, `role` (from auth roles), `invited_by`, `invited_at`, `joined_at`, `status` (invited/active/removed), `created_at`, `updated_at`
   - Indexes: `(org_id, user_id)` UNIQUE, `(org_id, status)`
-- [ ] `migrations/003_create_org_members_table.down.sql`
-- [ ] `migrations/004_create_plans_table.up.sql`
+- [x] `migrations/003_create_org_members_table.down.sql`
+- [x] `migrations/004_create_plans_table.up.sql`
   - Columns: `id`, `name`, `display_name`, `max_users`, `max_storage_bytes`, `max_api_calls_per_minute`, `available_modules` (text array), `price_monthly_cents`, `price_annual_cents`, `is_active`, `created_at`, `updated_at`
   - Seed data: free/starter/business/enterprise plans
-- [ ] `migrations/004_create_plans_table.down.sql`
-- [ ] `migrations/005_create_departments_table.up.sql`
+- [x] `migrations/004_create_plans_table.down.sql`
+- [x] `migrations/005_create_departments_table.up.sql`
   - Columns: `id`, `org_id`, `name`, `description`, `parent_id` (self-referential for hierarchy), `created_at`, `updated_at`
   - Indexes: `(org_id, name)` UNIQUE, `(org_id, parent_id)`
-- [ ] `migrations/005_create_departments_table.down.sql`
-- [ ] Verify migrations run cleanly
+- [x] `migrations/005_create_departments_table.down.sql`
+- [x] Verify migrations run cleanly
 
-### 1.2.3 Domain Models
-- [ ] `internal/models/organization.go` — Organization, CreateOrgRequest, UpdateOrgRequest, OrgResponse
-- [ ] `internal/models/module.go` — Module, ToggleModuleRequest, ModuleResponse
-- [ ] `internal/models/member.go` — Member, InviteMemberRequest, MemberResponse
-- [ ] `internal/models/plan.go` — Plan, ChangePlanRequest, PlanResponse
-- [ ] `internal/models/department.go` — Department, CreateDeptRequest, DeptResponse
-- [ ] All request structs use `validate` tags
+### 1.2.3 Domain Models ✅
+- [x] `internal/models/organization.go` — Organization, CreateOrgRequest, UpdateOrgRequest, OrgResponse
+- [x] `internal/models/module.go` — Module, ToggleModuleRequest, ModuleResponse
+- [x] `internal/models/member.go` — Member, InviteMemberRequest, MemberResponse
+- [x] `internal/models/plan.go` — Plan, ChangePlanRequest, PlanResponse
+- [x] `internal/models/department.go` — Department, CreateDeptRequest, DeptResponse
+- [x] All request structs use `validate` tags
 
-### 1.2.4 Repository Layer
-- [ ] `internal/repository/postgres/org_repo.go`
+### 1.2.4 Repository Layer ✅
+- [x] `internal/repository/postgres/org_repo.go`
   - `Create(ctx, org)` — create org, auto-create default modules
   - `GetByID(ctx, id)` — note: org_id IS tenant_id here
   - `GetBySlug(ctx, slug)` — for URL-based access
   - `Update(ctx, id, fields)`
   - `Delete(ctx, id)` — soft delete (set status=deleted)
   - `List(ctx, filter, page)` — admin-only
-- [ ] `internal/repository/postgres/module_repo.go`
+- [x] `internal/repository/postgres/module_repo.go`
   - `GetByOrg(ctx, orgID)` — all modules for an org
   - `Toggle(ctx, orgID, moduleName, enabled)` — enable/disable
   - `GetConfig(ctx, orgID, moduleName)` — per-module config
   - `UpdateConfig(ctx, orgID, moduleName, config)`
-- [ ] `internal/repository/postgres/member_repo.go`
+- [x] `internal/repository/postgres/member_repo.go`
   - `Add(ctx, orgID, member)` — invite member
   - `List(ctx, orgID, filter, page)` — with pagination
   - `Remove(ctx, orgID, userID)` — set status=removed
   - `UpdateRole(ctx, orgID, userID, role)`
-- [ ] `internal/repository/postgres/plan_repo.go`
+- [x] `internal/repository/postgres/plan_repo.go`
   - `GetByName(ctx, name)` — look up plan details
   - `List(ctx)` — all available plans
-- [ ] `internal/repository/postgres/dept_repo.go`
+- [x] `internal/repository/postgres/dept_repo.go`
   - `Create(ctx, orgID, dept)`
   - `List(ctx, orgID)` — with hierarchy
   - `Update(ctx, orgID, deptID, fields)`
   - `Delete(ctx, orgID, deptID)`
-- [ ] `internal/repository/redis/module_cache.go`
+- [x] `internal/repository/redis/module_cache.go`
   - Cache org module config (hot path for gateway lookups)
   - Invalidate on toggle
   - TTL: 5 minutes
-- [ ] Unit tests for each repository
+- [x] Unit tests for each repository
 
-### 1.2.5 Service Layer
-- [ ] `internal/service/org_service.go`
+### 1.2.5 Service Layer ✅
+- [x] `internal/service/org_service.go`
   - `Create(ctx, req)` — validate, create org, set owner, seed default modules per plan, publish `org.created`
   - `GetByID(ctx, id)` — with module summary
   - `Update(ctx, id, req)` — validate, update, publish `org.updated`
   - `Delete(ctx, id)` — soft-delete, cascade notifications, publish `org.deleted`
-- [ ] `internal/service/module_service.go`
+- [x] `internal/service/module_service.go`
   - `GetModules(ctx, orgID)` — return all modules with status (used by gateway)
   - `ToggleModule(ctx, orgID, moduleName, enabled)` — check plan allows module, invalidate cache, publish `org.module_toggled`
   - `GetModuleConfig(ctx, orgID, moduleName)` — per-module settings
-- [ ] `internal/service/member_service.go`
+- [x] `internal/service/member_service.go`
   - `Invite(ctx, orgID, req)` — check max users (plan limit), publish `org.member_invited`
   - `List(ctx, orgID, filter, page)` — with roles and status
   - `Remove(ctx, orgID, userID)` — publish `org.member_removed`
-- [ ] `internal/service/plan_service.go`
+- [x] `internal/service/plan_service.go`
   - `GetCurrent(ctx, orgID)` — org's current plan
   - `Change(ctx, orgID, newPlan)` — validate upgrade/downgrade rules, adjust limits, publish `org.plan_changed`
   - `ListAvailable(ctx)` — all plans
 
-### 1.2.6 HTTP Handlers
-- [ ] `internal/handlers/org_handler.go`
+### 1.2.6 HTTP Handlers ✅
+- [x] `internal/handlers/org_handler.go`
   - `POST /api/v1/organizations` — create org (during registration)
   - `GET /api/v1/organizations/:id` — get org details
   - `PUT /api/v1/organizations/:id` — update org settings
-- [ ] `internal/handlers/module_handler.go`
+- [x] `internal/handlers/module_handler.go`
   - `GET /api/v1/organizations/:id/modules` — list modules
   - `PUT /api/v1/organizations/:id/modules` — toggle module(s)
   - `GET /api/v1/organizations/:id/modules/:name/config` — module config
-- [ ] `internal/handlers/member_handler.go`
+- [x] `internal/handlers/member_handler.go`
   - `GET /api/v1/organizations/:id/members` — list members
   - `POST /api/v1/organizations/:id/members/invite` — invite member
   - `DELETE /api/v1/organizations/:id/members/:userId` — remove member
-- [ ] `internal/handlers/plan_handler.go`
+- [x] `internal/handlers/plan_handler.go`
   - `GET /api/v1/organizations/:id/plan` — current plan
   - `PUT /api/v1/organizations/:id/plan` — change plan
   - `GET /api/v1/plans` — list all available plans
-- [ ] `internal/handlers/dept_handler.go`
+- [x] `internal/handlers/dept_handler.go`
   - `GET /api/v1/organizations/:id/departments` — list departments
   - `POST /api/v1/organizations/:id/departments` — create department
   - `PUT /api/v1/organizations/:id/departments/:deptId` — update department
   - `DELETE /api/v1/organizations/:id/departments/:deptId` — delete department
-- [ ] All handlers use validation, identity guard, tenant scoping
+- [x] All handlers use validation, identity guard, tenant scoping
 
-### 1.2.7 API Route Registration & Middleware
-- [ ] `api/routes.go` — same middleware stack as Auth, plus RBAC checks:
+### 1.2.7 API Route Registration & Middleware ✅
+- [x] `api/routes.go` — same middleware stack as Auth, plus RBAC checks:
   - Org creation: any authenticated user
   - Org settings/modules/plan: `org_owner` or `org_admin` only
   - Member management: `org_admin` or higher
   - Department management: `manager` or higher
 
-### 1.2.8 Redis Streams Events
-- [ ] Publish events:
+### 1.2.8 Redis Streams Events ✅
+- [x] Publish events:
   - `org.created` — on org creation
   - `org.updated` — on settings update
   - `org.deleted` — on org deletion
@@ -327,24 +327,24 @@ Manages multi-tenancy, module toggles, and billing plans. **Depends on Auth Serv
   - `org.member_invited` — with user info
   - `org.member_removed` — with user info
 
-### 1.2.9 Observability
-- [ ] OpenTelemetry instrumentation
-- [ ] Prometheus metrics: `org_created_total`, `org_module_toggled_total`, `org_plan_changed_total`
-- [ ] Health check with DB + Redis checks
+### 1.2.9 Observability ✅
+- [x] OpenTelemetry instrumentation
+- [x] Prometheus metrics: `org_created_total`, `org_module_toggled_total`, `org_plan_changed_total`
+- [x] Health check with DB + Redis checks
 
-### 1.2.10 Containerfile
-- [ ] Same hardening standards as Auth Service
+### 1.2.10 Containerfile ✅
+- [x] Same hardening standards as Auth Service
 
-### 1.2.11 Tests
-- [ ] Unit tests for all handlers and service methods
-- [ ] Integration tests: org creation → module toggle → plan change flow
-- [ ] Plan limit enforcement tests (max users, max storage)
-- [ ] Module config caching/invalidation tests
-- [ ] RBAC authorization tests (owner vs admin vs member)
+### 1.2.11 Tests ✅
+- [x] Unit tests for all handlers and service methods (32 tests)
+- [x] Integration tests: org creation → module toggle → plan change flow
+- [x] Plan limit enforcement tests (max users, max storage)
+- [x] Module config caching/invalidation tests
+- [x] RBAC authorization tests (owner vs admin vs member)
 
-### 1.2.12 Documentation
-- [ ] `services/organization-service/README.md`
-- [ ] `libs/contracts/organization-service.yaml` — OpenAPI 3.0 spec
+### 1.2.12 Documentation ✅
+- [x] `services/organization-service/README.md`
+- [x] `libs/contracts/organization-service.yaml` — OpenAPI 3.0 spec
 
 ---
 

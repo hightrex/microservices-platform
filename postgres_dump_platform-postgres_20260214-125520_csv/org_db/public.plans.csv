@@ -1,0 +1,5 @@
+id,name,display_name,max_users,max_storage_bytes,max_api_calls_per_minute,available_modules,price_monthly_cents,price_annual_cents,is_active,created_at,updated_at
+1514cba0-a9c8-40fc-97f1-954ef4b3f3de,free,Free,5,1073741824,60,{audit_logging},0,0,t,2026-02-14 03:57:52.815205+00,2026-02-14 03:57:52.815205+00
+9124fa4c-863b-48b0-9238-5b291c6e6f0a,starter,Starter,25,10737418240,300,"{notifications,audit_logging}",2900,29000,t,2026-02-14 03:57:52.815205+00,2026-02-14 03:57:52.815205+00
+986f939b-13db-42a8-a76f-eb720ca736ad,business,Business,100,107374182400,1000,"{notifications,billing,file_management,audit_logging,analytics}",9900,99000,t,2026-02-14 03:57:52.815205+00,2026-02-14 03:57:52.815205+00
+c0f0b3ed-584e-4a70-83f1-7b7e6e85e3e6,enterprise,Enterprise,1000,1099511627776,5000,"{notifications,billing,file_management,audit_logging,analytics}",29900,299000,t,2026-02-14 03:57:52.815205+00,2026-02-14 03:57:52.815205+00

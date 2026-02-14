@@ -38,6 +38,47 @@ services:
       retries: 3
       start_period: 30s
 
+  organization-service:
+    build:
+      context: ../../
+      dockerfile: services/organization-service/Containerfile
+    container_name: platform-organization-service
+    restart: always 
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      - SERVER_PORT=8081
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - DATABASE_HOST=platform-postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=org_db
+      - DATABASE_SSL_MODE=disable
+      - REDIS_ADDRESS=platform-redis:6379
+      - REDIS_PASSWORD=devredispass
+      - REDIS_DB=1
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-chars!
+      - AUTH_SERVICE_BASE_URL=http://platform-auth-service:8080
+    depends_on:
+      - auth-service
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
 networks:
   app-net:
     external: true

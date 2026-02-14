@@ -4,6 +4,7 @@
 	infra-dev-up infra-dev-down infra-dev-restart \
 	infra-security-up infra-security-down infra-security-restart infra-security-logs \
 	services-up services-down services-restart services-status services-ps services-logs services-build services-rebuild services-clean services-pull \
+	services-up-auth services-up-org \
 	stack-up stack-down stack-restart stack-status stack-logs stack-build stack-rebuild stack-clean stack-reset \
 	init-db setup test test-tenant-isolation lint \
 	security-sast security-trivy security-dast security-all security-up security-down \
@@ -50,6 +51,8 @@ help:
 	@echo "  make services-rebuild       Rebuild services images (no-cache) then start"
 	@echo "  make services-clean         Remove services stack + volumes (project scoped)"
 	@echo "  make services-pull          Pull referenced images (if any)"
+	@echo "  make services-up-auth       Start only Auth Service"
+	@echo "  make services-up-org        Start only Organization Service"
 	@echo ""
 	@echo "Full stack (infra + dev + security + services):"
 	@echo "  make stack-up               Start everything"
@@ -182,6 +185,14 @@ services-pull:
 	@echo "==> Pulling service images (if applicable)..."
 	podman compose -f $(SERVICES_COMPOSE) pull || true
 
+services-up-auth:
+	@echo "==> Starting Auth Service..."
+	podman compose -f $(SERVICES_COMPOSE) up -d auth-service
+
+services-up-org:
+	@echo "==> Starting Organization Service..."
+	podman compose -f $(SERVICES_COMPOSE) up -d organization-service
+
 services-build:
 	@echo "==> Building service images..."
 	podman compose -f $(SERVICES_COMPOSE) build
@@ -268,7 +279,12 @@ setup:
 # -------------------------
 test:
 	@echo "==> Running tests..."
+	@echo "--- libs/go ---"
 	cd libs/go && go test -v ./...
+	@echo "--- auth-service ---"
+	cd services/auth-service && go test -v ./...
+	@echo "--- organization-service ---"
+	cd services/organization-service && go test -v ./...
 
 test-tenant-isolation:
 	@echo "==> Running tenant isolation tests..."
@@ -276,7 +292,12 @@ test-tenant-isolation:
 
 lint:
 	@echo "==> Running linters..."
+	@echo "--- libs/go ---"
 	cd libs/go && golangci-lint run
+	@echo "--- auth-service ---"
+	cd services/auth-service && golangci-lint run
+	@echo "--- organization-service ---"
+	cd services/organization-service && golangci-lint run
 
 # -------------------------
 # Security scans (scripts)

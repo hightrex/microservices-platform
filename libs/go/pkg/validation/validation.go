@@ -46,9 +46,28 @@ func getValidator() *validator.Validate {
 	once.Do(func() {
 		validate = validator.New(validator.WithRequiredStructEnabled())
 		// Register custom validators here as the platform grows.
-		// Example: validate.RegisterValidation("slug", slugValidator)
+		_ = validate.RegisterValidation("slug", slugValidator)
 	})
 	return validate
+}
+
+// slugValidator checks if a string is a valid URL-friendly slug.
+func slugValidator(fl validator.FieldLevel) bool {
+	slug := fl.Field().String()
+	if slug == "" {
+		return true // skip empty, use 'required' tag for that
+	}
+	// Regex: lowercase letters, numbers, and hyphens, starting/ending with letter/number
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			continue
+		}
+		return false
+	}
+	if slug[0] == '-' || slug[len(slug)-1] == '-' {
+		return false
+	}
+	return true
 }
 
 // FieldError represents a single field validation error in a standardized format.

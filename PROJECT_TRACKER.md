@@ -1,6 +1,6 @@
 # Microservices Platform — Project Tracker
 
-> **Last updated:** 2026-02-13
+> **Last updated:** 2026-02-14
 > **Total services:** 8 | **Phases:** 4 | **Target:** ~26 weeks
 
 ---
@@ -191,37 +191,41 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] OpenAPI spec in `libs/contracts/auth-service.yaml`
 - [x] README
 
-### 1.2 Organization Service (Go/Gin — Port 8081)
-- [ ] Scaffold with `create-service.sh`
-- [ ] Database migrations:
-  - [ ] `001_create_organizations_table.sql`
-  - [ ] `002_create_org_modules_table.sql`
-  - [ ] `003_create_org_members_table.sql`
-  - [ ] `004_create_org_plans_table.sql`
-  - [ ] `005_create_departments_table.sql`
-- [ ] Handlers:
-  - [ ] `POST /api/v1/organizations` (register)
-  - [ ] `GET /api/v1/organizations/:id`
-  - [ ] `PUT /api/v1/organizations/:id`
-  - [ ] `GET /api/v1/organizations/:id/modules` (enabled modules)
-  - [ ] `PUT /api/v1/organizations/:id/modules` (toggle modules)
-  - [ ] `GET /api/v1/organizations/:id/members`
-  - [ ] `POST /api/v1/organizations/:id/members/invite`
-  - [ ] `DELETE /api/v1/organizations/:id/members/:userId`
-  - [ ] `GET /api/v1/organizations/:id/plan`
-  - [ ] `PUT /api/v1/organizations/:id/plan` (upgrade/downgrade)
-  - [ ] `GET /api/v1/organizations/:id/departments`
-  - [ ] `POST /api/v1/organizations/:id/departments`
-- [ ] Service layer
-- [ ] Repository layer
-- [ ] Redis Streams events: `org.created`, `org.module_toggled`, `org.plan_changed`
-- [ ] Redis caching for module config (hot path for gateway)
-- [ ] Seed data: default plans (free/starter/professional/enterprise)
-- [ ] OpenTelemetry instrumentation
-- [ ] Containerfile
-- [ ] Unit + integration tests
-- [ ] OpenAPI spec in `libs/contracts/organization-service.yaml`
-- [ ] README
+### 1.2 Organization Service (Go/Gin — Port 8081) ✅
+- [x] Scaffold with `create-service.sh`
+- [x] Database migrations:
+  - [x] `001_create_organizations_table.sql`
+  - [x] `002_create_org_modules_table.sql`
+  - [x] `003_create_org_members_table.sql`
+  - [x] `004_create_org_plans_table.sql`
+  - [x] `005_create_departments_table.sql`
+- [x] Handlers:
+  - [x] `POST /api/v1/organizations` (create)
+  - [x] `GET /api/v1/organizations/:id`
+  - [x] `PUT /api/v1/organizations/:id`
+  - [x] `GET /api/v1/organizations/:id/modules` (enabled modules)
+  - [x] `PUT /api/v1/organizations/:id/modules` (toggle modules)
+  - [x] `GET /api/v1/organizations/:id/members`
+  - [x] `POST /api/v1/organizations/:id/members/invite`
+  - [x] `DELETE /api/v1/organizations/:id/members/:userId`
+  - [x] `GET /api/v1/organizations/:id/plan`
+  - [x] `PUT /api/v1/organizations/:id/plan` (upgrade/downgrade)
+  - [x] `GET /api/v1/organizations/:id/departments`
+  - [x] `POST /api/v1/organizations/:id/departments`
+  - [x] `PUT /api/v1/organizations/:id/departments/:deptId`
+  - [x] `DELETE /api/v1/organizations/:id/departments/:deptId`
+  - [x] `GET /api/v1/plans` (list available plans)
+- [x] Service layer (org, module, member, plan, dept services)
+- [x] Repository layer (5 postgres repos + redis module cache)
+- [x] Redis Streams events: `org.created`, `org.updated`, `org.deleted`, `org.module_toggled`, `org.plan_changed`, `org.member_invited`, `org.member_removed`
+- [x] Redis caching for module config (hot path for gateway, 5min TTL)
+- [x] Seed data: default plans (free/starter/business/enterprise)
+- [x] OpenTelemetry instrumentation
+- [x] Prometheus metrics (org_created_total, org_module_toggled_total, org_plan_changed_total)
+- [x] Containerfile (multi-stage, non-root, healthcheck)
+- [x] Unit tests (32 tests across handlers, services, middleware)
+- [x] OpenAPI spec in `libs/contracts/organization-service.yaml`
+- [x] README
 
 ### 1.3 Shared TypeScript Package (`libs/typescript/`)
 - [ ] Initialize npm package

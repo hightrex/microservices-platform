@@ -1,0 +1,451 @@
+openapi: 3.0.3
+info:
+  title: Organization Service API
+  description: Multi-tenancy management service — organizations, modules, plans, members, departments
+  version: 1.0.0
+  contact:
+    name: Microservices Platform Team
+
+servers:
+  - url: http://localhost:8081
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Infrastructure]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+
+  /api/v1/organizations:
+    post:
+      summary: Create a new organization
+      tags: [Organizations]
+      security:
+        - GatewayAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrgRequest'
+      responses:
+        '201':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/organizations/{id}:
+    get:
+      summary: Get organization details
+      tags: [Organizations]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      responses:
+        '200':
+          description: Organization details with modules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Organization not found
+    put:
+      summary: Update organization settings
+      tags: [Organizations]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrgRequest'
+      responses:
+        '200':
+          description: Organization updated
+        '403':
+          description: Insufficient permissions (requires org_owner or org_admin)
+
+  /api/v1/organizations/{id}/modules:
+    get:
+      summary: List all modules for an organization
+      tags: [Modules]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      responses:
+        '200':
+          description: List of modules
+    put:
+      summary: Toggle a module on/off
+      tags: [Modules]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToggleModuleRequest'
+      responses:
+        '200':
+          description: Module toggled
+        '403':
+          description: Module not available on current plan
+
+  /api/v1/organizations/{id}/modules/{name}/config:
+    get:
+      summary: Get module configuration
+      tags: [Modules]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [notifications, billing, file_management, audit_logging, analytics]
+      responses:
+        '200':
+          description: Module configuration
+
+  /api/v1/organizations/{id}/members:
+    get:
+      summary: List organization members
+      tags: [Members]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [invited, active, removed]
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list of members
+
+  /api/v1/organizations/{id}/members/invite:
+    post:
+      summary: Invite a member to the organization
+      tags: [Members]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteMemberRequest'
+      responses:
+        '201':
+          description: Member invited
+        '403':
+          description: Member limit reached for current plan
+
+  /api/v1/organizations/{id}/members/{userId}:
+    delete:
+      summary: Remove a member from the organization
+      tags: [Members]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Member removed
+
+  /api/v1/organizations/{id}/plan:
+    get:
+      summary: Get current plan for an organization
+      tags: [Plans]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      responses:
+        '200':
+          description: Current plan details
+    put:
+      summary: Change organization plan
+      tags: [Plans]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePlanRequest'
+      responses:
+        '200':
+          description: Plan changed
+        '400':
+          description: Already on this plan
+
+  /api/v1/plans:
+    get:
+      summary: List all available plans
+      tags: [Plans]
+      security:
+        - GatewayAuth: []
+      responses:
+        '200':
+          description: List of available plans
+
+  /api/v1/organizations/{id}/departments:
+    get:
+      summary: List departments (hierarchical)
+      tags: [Departments]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      responses:
+        '200':
+          description: Hierarchical list of departments
+    post:
+      summary: Create a department
+      tags: [Departments]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeptRequest'
+      responses:
+        '201':
+          description: Department created
+
+  /api/v1/organizations/{id}/departments/{deptId}:
+    put:
+      summary: Update a department
+      tags: [Departments]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+        - name: deptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeptRequest'
+      responses:
+        '200':
+          description: Department updated
+    delete:
+      summary: Delete a department
+      tags: [Departments]
+      security:
+        - GatewayAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgID'
+        - name: deptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Department deleted
+
+components:
+  securitySchemes:
+    GatewayAuth:
+      type: apiKey
+      in: header
+      name: X-User-ID
+      description: Gateway-forwarded user identity headers (X-User-ID, X-Tenant-ID, X-User-Roles)
+
+  parameters:
+    OrgID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+
+    CreateOrgRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9]+$'
+
+    UpdateOrgRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        settings:
+          type: object
+
+    ToggleModuleRequest:
+      type: object
+      required: [module_name, enabled]
+      properties:
+        module_name:
+          type: string
+          enum: [notifications, billing, file_management, audit_logging, analytics]
+        enabled:
+          type: boolean
+
+    InviteMemberRequest:
+      type: object
+      required: [user_id, role]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [org_owner, org_admin, manager, member, viewer]
+
+    ChangePlanRequest:
+      type: object
+      required: [plan_name]
+      properties:
+        plan_name:
+          type: string
+          enum: [free, starter, business, enterprise]
+
+    CreateDeptRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        parent_id:
+          type: string
+          format: uuid
+
+    UpdateDeptRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        parent_id:
+          type: string
+          format: uuid
