@@ -113,3 +113,24 @@ Located in `tests/security/sast/rules.yaml`:
 ### Reports
 
 All scan reports are saved to `tests/security/reports/` (gitignored). Reports are generated in JSON format for machine processing.
+
+## Functional Security Tests
+
+### Auth-Specific Security Tests
+These tests verify JWT manipulation, brute-force protection, and password policies.
+```bash
+# Run auth security tests
+cd tests/security/auth
+go test -v ./...
+```
+
+### Tenant Isolation Tests
+These tests verify that data does not leak between tenants.
+```bash
+# Run tenant isolation scenarios
+make test-tenant-isolation
+# OR manually:
+cd tests/security/tenant-isolation
+go test -v ./...
+```
+

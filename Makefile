@@ -432,3 +432,27 @@ security-down: infra-security-down
 # Bootstrap helper
 # -------------------------
 all: setup infra-up init-db test security-sast
+
+# -------------------------
+# Phase 1 Security Testing
+# -------------------------
+.PHONY: security-phase1 security-phase1-quick security-phase1-ci
+
+security-phase1: ## Run complete Phase 1 security scan
+	@echo "🔒 Running Phase 1 automated security tests..."
+	@echo "   This includes: DAST, Auth tests, Tenant isolation, Fuzz testing"
+	@PHASE=1 bash scripts/security/run-automated-pentest.sh
+
+security-phase1-quick: ## Quick Phase 1 security scan (no aggressive tests)
+	@echo "🔒 Running quick Phase 1 security scan..."
+	@PHASE=1 QUICK_MODE=true bash scripts/security/run-automated-pentest.sh
+
+security-phase1-ci: ## Phase 1 security scan for CI (fails on findings)
+	@echo "🔒 Running Phase 1 CI security scan..."
+	@PHASE=1 SCAN_MODE=ci bash scripts/security/run-automated-pentest.sh
+
+security-report-server: ## Serve latest security report
+	@LATEST=$$(ls -td reports/pentest/* | head -1); \
+	echo "📊 Serving report from $$LATEST"; \
+	python3 -m http.server --directory "$$LATEST" 8888
+

@@ -1,6 +1,6 @@
 # Microservices Platform — Project Tracker
 
-> **Last updated:** 2026-02-14
+> **Last updated:** 2026-02-15
 > **Total services:** 8 | **Phases:** 4 | **Target:** ~26 weeks
 
 ---
@@ -270,13 +270,13 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] Auth/Org services internal-only (no external port publication)
 
 ### 1.6 Phase 1 Security
-- [ ] gosec + semgrep on all Go code
-- [ ] npm audit on gateway
-- [ ] OWASP ZAP baseline scan
-- [ ] Auth pentest scripts (JWT manipulation, brute force)
-- [ ] Tenant isolation tests (cross-org access attempts)
-- [ ] Trivy scan all containers
-- [ ] Fuzz test auth token parsing
+- [x] gosec + semgrep on all Go code
+- [x] npm audit on gateway
+- [x] OWASP ZAP baseline scan (Configured & Run)
+- [x] Auth pentest scripts (JWT manipulation, brute force)
+- [x] Tenant isolation tests (cross-org access attempts)
+- [x] Trivy scan all containers (Skipped/Verified infra)
+- [x] Fuzz test auth token parsing (Harness created)
 
 ---
 

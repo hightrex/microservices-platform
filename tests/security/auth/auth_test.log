@@ -1,0 +1,14 @@
+=== RUN   TestAuthSecurity
+=== RUN   TestAuthSecurity/JWT_Manipulation
+=== RUN   TestAuthSecurity/JWT_Manipulation/ExpiredToken
+=== RUN   TestAuthSecurity/JWT_Manipulation/WrongSignature
+=== RUN   TestAuthSecurity/BruteForce_Protection
+=== RUN   TestAuthSecurity/Password_Policy
+--- PASS: TestAuthSecurity (9.02s)
+    --- PASS: TestAuthSecurity/JWT_Manipulation (1.76s)
+        --- PASS: TestAuthSecurity/JWT_Manipulation/ExpiredToken (0.00s)
+        --- PASS: TestAuthSecurity/JWT_Manipulation/WrongSignature (0.01s)
+    --- PASS: TestAuthSecurity/BruteForce_Protection (6.23s)
+    --- PASS: TestAuthSecurity/Password_Policy (1.02s)
+PASS
+ok  	github.com/hightrex/microservices-platform/tests/security/auth	9.021s

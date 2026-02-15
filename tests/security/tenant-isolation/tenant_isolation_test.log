@@ -1,0 +1,47 @@
+=== RUN   TestHarnessCreatesTenants
+    harness_test.go:15: Created test tenant: name=tenant-a id=f179a933-58a3-4db9-ba05-5583ef76b465 user=tenant-a_1771082946105152200@example.com
+    harness_test.go:16: Created test tenant: name=tenant-b id=776abb20-0a0b-4689-94cb-9c73dcd185e2 user=tenant-b_1771082948741747465@example.com
+--- PASS: TestHarnessCreatesTenants (4.86s)
+=== RUN   TestHarnessGetTenant
+    harness_test.go:33: Created test tenant: name=my-org id=bd559eb2-d643-43e8-88c1-9eb5d352a3b3 user=my-org_1771082950957186246@example.com
+--- PASS: TestHarnessGetTenant (2.29s)
+=== RUN   TestHarnessRequireTenant
+    harness_test.go:41: Created test tenant: name=test-org id=b8a55633-1b9b-4138-a0e8-29d10289eca0 user=test-org_1771082953243498026@example.com
+--- PASS: TestHarnessRequireTenant (2.41s)
+=== RUN   TestTenantIsolationScenarios
+=== RUN   TestTenantIsolationScenarios/CrossTenantRead
+    cross_tenant_read.go:11: Starting CrossTenantReadScenario
+=== NAME  TestTenantIsolationScenarios
+    cross_tenant_read.go:14: Created test tenant: name=tenantA_read id=7d9be4b7-4a6d-4145-aa5a-6b5820b15959 user=tenanta_read_1771082955656245745@example.com
+    cross_tenant_read.go:15: Created test tenant: name=tenantB_read id=45af1556-8f6c-490b-adc9-8f05bd284762 user=tenantb_read_1771082957704014846@example.com
+=== NAME  TestTenantIsolationScenarios/CrossTenantRead
+    cross_tenant_read.go:21: Target Resource: User ID c976ada6-6dac-4542-b304-766c12ce5d34 (belongs to tenantB_read)
+    cross_tenant_read.go:49: Success: Request denied with status 404
+=== RUN   TestTenantIsolationScenarios/CrossTenantWrite
+    cross_tenant_write.go:13: Starting CrossTenantWriteScenario
+=== NAME  TestTenantIsolationScenarios
+    cross_tenant_write.go:16: Created test tenant: name=tenantA_write id=15d87b1a-bbd6-46f2-a4ff-0afc671264aa user=tenanta_write_1771082959596658498@example.com
+    cross_tenant_write.go:17: Created test tenant: name=tenantB_write id=078b4b8d-0249-4e56-8b6a-c3c7cff26405 user=tenantb_write_1771082961346385600@example.com
+=== NAME  TestTenantIsolationScenarios/CrossTenantWrite
+    cross_tenant_write.go:50: Success: Update denied with status 404
+=== RUN   TestTenantIsolationScenarios/CrossTenantList
+    cross_tenant_list.go:11: Starting CrossTenantListScenario
+=== NAME  TestTenantIsolationScenarios
+    cross_tenant_list.go:14: Created test tenant: name=tenantA_list id=d752c6e3-9746-4cc3-a957-c68b810ca7d5 user=tenanta_list_1771082963348520583@example.com
+    cross_tenant_list.go:15: Created test tenant: name=tenantB_list id=d935d88a-494f-4308-8635-063c47dba4bc user=tenantb_list_1771082965196248054@example.com
+=== NAME  TestTenantIsolationScenarios/CrossTenantList
+    cross_tenant_list.go:57: Success: Tenant B's user not visible to Tenant A
+=== RUN   TestTenantIsolationScenarios/CrossTenantDelete
+    cross_tenant_delete.go:11: Starting CrossTenantDeleteScenario
+=== NAME  TestTenantIsolationScenarios
+    cross_tenant_delete.go:14: Created test tenant: name=tenantA_delete id=bf4d59c7-64fe-44fa-a332-9d1259552cef user=tenanta_delete_1771082967155791233@example.com
+    cross_tenant_delete.go:15: Created test tenant: name=tenantB_delete id=2ef619c5-ea1a-40ac-9a01-f5df777f4f44 user=tenantb_delete_1771082969137988408@example.com
+=== NAME  TestTenantIsolationScenarios/CrossTenantDelete
+    cross_tenant_delete.go:41: Success: Delete denied with status 404
+--- PASS: TestTenantIsolationScenarios (15.69s)
+    --- PASS: TestTenantIsolationScenarios/CrossTenantRead (3.94s)
+    --- PASS: TestTenantIsolationScenarios/CrossTenantWrite (3.75s)
+    --- PASS: TestTenantIsolationScenarios/CrossTenantList (3.81s)
+    --- PASS: TestTenantIsolationScenarios/CrossTenantDelete (4.18s)
+PASS
+ok  	github.com/hightrex/microservices-platform/tests/security/tenant-isolation	25.254s

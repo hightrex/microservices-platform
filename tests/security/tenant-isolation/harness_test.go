@@ -43,26 +43,26 @@ func TestHarnessRequireTenant(t *testing.T) {
 	require.Equal(t, tc.ID, id)
 }
 
-// TestCrossTenantContextIsolation is a Phase 0 skeleton test demonstrating
-// the pattern for cross-tenant isolation testing. Phase 1 will add
-// real database and API assertions here.
-func TestCrossTenantContextIsolation(t *testing.T) {
+// TestCrossTenantContextIsolation verified basic context isolation.
+// Now we run the real service-level scenarios.
+func TestTenantIsolationScenarios(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	h := New(t)
 
-	tenantA := h.CreateTenant("org-alpha")
-	tenantB := h.CreateTenant("org-beta")
-
-	// Verify contexts are isolated
-	idFromA := tenant.FromContext(tenantA.Ctx)
-	idFromB := tenant.FromContext(tenantB.Ctx)
-
-	assert.Equal(t, tenantA.ID, idFromA, "Tenant A context should contain Tenant A's ID")
-	assert.Equal(t, tenantB.ID, idFromB, "Tenant B context should contain Tenant B's ID")
-	assert.NotEqual(t, idFromA, idFromB, "Tenant contexts should be isolated")
-
-	// Phase 1 TODO: Add real cross-tenant data access tests:
-	// - Create a user in Tenant B's context
-	// - Try to list users in Tenant A's context
-	// - Assert Tenant B's user is NOT visible
-	t.Log("Phase 0: Context isolation verified. Phase 1 will add service-level tests.")
+	// Run scenarios as subtests
+	t.Run("CrossTenantRead", func(t *testing.T) {
+		CrossTenantReadScenario(t, h)
+	})
+	t.Run("CrossTenantWrite", func(t *testing.T) {
+		CrossTenantWriteScenario(t, h)
+	})
+	t.Run("CrossTenantList", func(t *testing.T) {
+		CrossTenantListScenario(t, h)
+	})
+	t.Run("CrossTenantDelete", func(t *testing.T) {
+		CrossTenantDeleteScenario(t, h)
+	})
 }

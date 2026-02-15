@@ -1,0 +1,239 @@
+# Phase 1 Automated Security Scan Configuration
+# Use this configuration while testing Auth + Org + Gateway services
+
+targets:
+  api_gateway:
+    url: http://api-gateway:3000
+    description: "Main entry point - proxies to auth and org services"
+    endpoints:
+      # Auth endpoints
+      - /api/v1/auth/register
+      - /api/v1/auth/login
+      - /api/v1/auth/logout
+      - /api/v1/auth/refresh
+      - /api/v1/auth/mfa/setup
+      - /api/v1/auth/mfa/verify
+      
+      # User management
+      - /api/v1/users
+      - /api/v1/users/:id
+      - /api/v1/users/:id/role
+      - /api/v1/users/:id/sessions
+      - /api/v1/users/:id/password
+      
+      # Organization endpoints
+      - /api/v1/organizations
+      - /api/v1/organizations/:id
+      - /api/v1/organizations/:id/members
+      - /api/v1/organizations/:id/modules
+      - /api/v1/organizations/:id/settings
+    
+    auth:
+      enabled: true
+      test_users:
+        - email: admin@test.com
+          password: AdminPass123!
+          role: org_owner
+        - email: member@test.com
+          password: MemberPass123!
+          role: member
+      jwt_endpoint: /api/v1/auth/login
+      refresh_endpoint: /api/v1/auth/refresh
+  
+  # Direct service access (should be blocked by network policy)
+  auth_service_direct:
+    url: http://auth-service:8080
+    description: "Should NOT be accessible directly - test network isolation"
+    expect_unreachable: true
+  
+  org_service_direct:
+    url: http://organization-service:8081
+    description: "Should NOT be accessible directly - test network isolation"
+    expect_unreachable: true
+
+# Phase 1 specific test configuration
+phase1_tests:
+  # 1.6.3 Auth-Specific Security Tests
+  auth_security:
+    jwt_attacks:
+      - tampered_signature
+      - expired_token
+      - wrong_signing_key
+      - missing_claims
+      - claim_manipulation
+    
+    brute_force:
+      enabled: true
+      endpoint: /api/v1/auth/login
+      max_attempts: 10
+      expect_lockout: true
+      lockout_duration: 300  # 5 minutes
+    
+    session_tests:
+      - session_hijacking
+      - concurrent_sessions
+      - session_after_logout
+      - session_after_password_change
+    
+    mfa_bypass:
+      - missing_mfa_check
+      - mfa_code_reuse
+      - mfa_timing_attack
+    
+    password_policy:
+      - weak_password_rejection
+      - password_history_check
+      - password_complexity
+  
+  # 1.6.4 Tenant Isolation Tests
+  tenant_isolation:
+    enabled: true
+    test_scenarios:
+      - cross_tenant_user_read
+      - cross_tenant_user_write
+      - cross_tenant_org_read
+      - cross_tenant_org_write
+      - cross_tenant_list_filtering
+      - cross_tenant_session_access
+    
+    test_tenants:
+      - name: tenant_a
+        org_id: org-a-uuid
+        users: [user-a1, user-a2]
+      - name: tenant_b
+        org_id: org-b-uuid
+        users: [user-b1, user-b2]
+  
+  # 1.6.2 DAST Requirements
+  owasp_zap:
+    baseline_scan: true
+    active_scan: false  # Too aggressive for now
+    spider: true
+    ajax_spider: false
+    context_file: /pentest/config/phase1-context.xml
+  
+  # RBAC boundary tests
+  rbac_tests:
+    enabled: true
+    scenarios:
+      # Member trying admin actions
+      - actor: member
+        action: DELETE /api/v1/users/:id
+        expect: 403
+      
+      - actor: member
+        action: PUT /api/v1/users/:other_id/role
+        expect: 403
+      
+      - actor: member
+        action: POST /api/v1/organizations/:id/modules
+        expect: 403
+      
+      # Viewer trying write actions
+      - actor: viewer
+        action: PUT /api/v1/users/:id
+        expect: 403
+      
+      - actor: viewer
+        action: DELETE /api/v1/organizations/:id
+        expect: 403
+      
+      # Admin trying to modify own role
+      - actor: admin
+        action: PUT /api/v1/users/:self/role
+        expect: 403  # Identity guard should block
+  
+  # Module gating tests
+  module_gating:
+    enabled: true
+    test_disabled_modules:
+      - module: notifications
+        endpoint: /api/v1/notifications
+        expect: 403
+        error_code: MODULE_NOT_ENABLED
+      
+      - module: billing
+        endpoint: /api/v1/billing/subscription
+        expect: 403
+        error_code: MODULE_NOT_ENABLED
+      
+      - module: files
+        endpoint: /api/v1/files
+        expect: 403
+        error_code: MODULE_NOT_ENABLED
+  
+  # Rate limiting verification
+  rate_limiting:
+    enabled: true
+    tests:
+      - endpoint: /api/v1/auth/login
+        tier: free
+        limit: 10
+        window: 60
+        expect_429: true
+        expect_headers:
+          - X-RateLimit-Limit
+          - X-RateLimit-Remaining
+          - X-RateLimit-Reset
+          - Retry-After
+
+scan_options:
+  aggressive: false
+  threads: 5
+  timeout: 120
+  skip_ssl_verify: true
+  
+  # Phase 1 specific settings
+  focus_areas:
+    - authentication
+    - authorization
+    - tenant_isolation
+    - jwt_security
+    - rate_limiting
+  
+  # Don't test these yet (Phase 2 services)
+  skip_tests:
+    - file_upload_attacks
+    - ssrf_notification_webhooks
+    - billing_amount_manipulation
+
+# Severity thresholds for Phase 1
+severity_thresholds:
+  critical: 0  # Zero tolerance
+  high: 0      # Zero tolerance for Phase 1
+  medium: 5    # Allow some medium findings
+  low: 20
+  info: 100
+
+# Expected vulnerabilities (for testing the scanner itself)
+expected_findings:
+  # These should be found if security is broken
+  - type: SQL_INJECTION
+    if_found: CRITICAL_FAILURE
+  - type: JWT_NO_SIGNATURE_CHECK
+    if_found: CRITICAL_FAILURE
+  - type: CROSS_TENANT_ACCESS
+    if_found: CRITICAL_FAILURE
+  - type: WEAK_PASSWORD_ACCEPTED
+    if_found: HIGH_FAILURE
+
+# Reporting
+reporting:
+  format: [html, json, markdown]
+  include_remediation: true
+  include_code_snippets: false  # Don't include in reports
+  group_by: severity
+  
+  email_notifications:
+    enabled: false  # Enable in CI
+    recipients:
+      - security@yourcompany.com
+    on_severity: [CRITICAL, HIGH]
+
+# CI/CD Integration
+ci_mode:
+  fail_on_critical: true
+  fail_on_high: true
+  fail_on_medium: false
+  generate_badge: true
+  upload_sarif: true  # For GitHub Security tab

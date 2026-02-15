@@ -1,0 +1,63 @@
+# scripts/security/docker/Dockerfile.kali-automated
+FROM kalilinux/kali-rolling:latest
+
+# Install required tools
+RUN apt-get update && apt-get install -y \
+    # Reconnaissance
+    nmap \
+    masscan \
+    fierce \
+    # Web scanning
+    nikto \
+    dirb \
+    whatweb \
+    wapiti \
+    # Vulnerability scanning
+    nuclei \
+    # Injection testing
+    sqlmap \
+    xsser \
+    commix \
+    # API testing
+    ffuf \
+    wfuzz \
+    # SSL/TLS testing
+    testssl.sh \
+    sslscan \
+    # Reporting
+    python3 \
+    python3-pip \
+    jq \
+    # Utilities
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for reporting
+# Install Python dependencies for reporting
+RUN pip3 install --no-cache-dir --break-system-packages \
+    requests \
+    jinja2 \
+    PyYAML \
+    python-dotenv \
+    tabulate \
+    colorama
+
+
+# Install additional tools from GitHub
+RUN git clone https://github.com/projectdiscovery/nuclei-templates.git /opt/nuclei-templates
+
+# Create working directories
+RUN mkdir -p /pentest/{config,modules,reports,results,utils}
+
+WORKDIR /pentest
+
+# Copy automation scripts
+COPY kali/ /pentest/
+
+# Make scripts executable
+RUN chmod +x /pentest/automated-scan.sh && \
+    chmod +x /pentest/modules/*.sh
+
+# Default command
+CMD ["/pentest/automated-scan.sh"]

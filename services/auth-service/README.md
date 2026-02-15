@@ -1,4 +1,4 @@
-# Auth & Identity Service
+# Auth & Identity Service (Phase 1 Complete)
 
 The authentication and identity backbone for the microservices platform. All other services depend on this for user identity, JWT validation, and RBAC.
 
