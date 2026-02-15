@@ -4,10 +4,10 @@
 	infra-dev-up infra-dev-down infra-dev-restart \
 	infra-security-up infra-security-down infra-security-restart infra-security-logs \
 	services-up services-down services-restart services-status services-ps services-logs services-build services-rebuild services-clean services-pull \
-	services-up-auth services-up-org services-up-gateway services-up-notification services-up-audit \
+	services-up-auth services-up-org services-up-gateway services-up-notification services-up-audit services-up-billing services-up-file \
 	core-up core-down core-logs core-status core-build core-rebuild core-reset \
 	stack-up stack-down stack-restart stack-status stack-logs stack-build stack-rebuild stack-clean stack-reset \
-	init-db setup test test-ts test-gateway test-go test-notification test-audit test-tenant-isolation lint \
+	init-db setup test test-ts test-gateway test-go test-rust test-billing test-file test-notification test-audit test-tenant-isolation test-all lint lint-rust \
 	security-sast security-trivy security-dast security-all security-up security-down \
 	all
 
@@ -55,6 +55,8 @@ help:
 	@echo "  make services-up-auth       Start only Auth Service"
 	@echo "  make services-up-org        Start only Organization Service"
 	@echo "  make services-up-notification  Start only Notification Service"
+	@echo "  make services-up-billing    Start only Billing Service (Rust)"
+	@echo "  make services-up-file       Start only File Service (Rust)"
 	@echo "  make services-up-audit      Start only Audit Service"
 	@echo "  make services-up-gateway    Start only API Gateway"
 	@echo ""
@@ -81,11 +83,16 @@ help:
 	@echo "Dev workflow:"
 	@echo "  make setup                  Run dev setup script"
 	@echo "  make init-db                Initialize databases"
-	@echo "  make test                   Run all tests (Go + TypeScript)"
+	@echo "  make test                   Run all tests (Go + TypeScript + Rust)"
+	@echo "  make test-all               Alias for test"
 	@echo "  make test-go                Run all Go tests"
+	@echo "  make test-rust              Run all Rust tests"
+	@echo "  make test-billing           Run Billing Service tests (Rust)"
+	@echo "  make test-file              Run File Service tests (Rust)"
 	@echo "  make test-notification      Run Notification Service tests"
 	@echo "  make test-audit             Run Audit Service tests"
-	@echo "  make lint                   Run golangci-lint"
+	@echo "  make lint                   Run all linters (Go + TypeScript + Rust)"
+	@echo "  make lint-rust              Run Rust clippy + fmt check"
 	@echo ""
 	@echo "Security scans:"
 	@echo "  make security-sast          Run SAST"
@@ -212,6 +219,14 @@ services-up-org:
 services-up-notification:
 	@echo "==> Starting Notification Service..."
 	podman compose -f $(SERVICES_COMPOSE) up -d notification-service
+
+services-up-billing:
+	@echo "==> Starting Billing Service..."
+	podman compose -f $(SERVICES_COMPOSE) up -d billing-service
+
+services-up-file:
+	@echo "==> Starting File Service..."
+	podman compose -f $(SERVICES_COMPOSE) up -d file-service
 
 services-up-audit:
 	@echo "==> Starting Audit Service..."
@@ -381,7 +396,9 @@ setup:
 # Testing & lint
 # -------------------------
 test:
-	@echo "==> Running tests..."
+	@echo "==> Running ALL tests (Go + TypeScript + Rust)..."
+	@echo ""
+	@echo "========== Go Tests =========="
 	@echo "--- libs/go ---"
 	cd libs/go && go test -v ./...
 	@echo "--- auth-service ---"
@@ -392,10 +409,22 @@ test:
 	cd services/notification-service && go test -v ./...
 	@echo "--- audit-service ---"
 	cd services/audit-service && go test -v ./...
+	@echo ""
+	@echo "========== TypeScript Tests =========="
 	@echo "--- libs/typescript ---"
 	cd libs/typescript && npm test
 	@echo "--- api-gateway ---"
 	cd services/api-gateway && npm test
+	@echo ""
+	@echo "========== Rust Tests =========="
+	@echo "--- libs/rust (shared crates) ---"
+	cd libs/rust && cargo test --workspace
+	@echo "--- billing-service ---"
+	cd services/billing-service && cargo test
+	@echo "--- file-service ---"
+	cd services/file-service && cargo test
+
+test-all: test
 
 test-go:
 	@echo "==> Running all Go tests..."
@@ -409,6 +438,23 @@ test-go:
 	cd services/notification-service && go test -v ./...
 	@echo "--- audit-service ---"
 	cd services/audit-service && go test -v ./...
+
+test-rust:
+	@echo "==> Running all Rust tests..."
+	@echo "--- libs/rust (shared crates) ---"
+	cd libs/rust && cargo test --workspace
+	@echo "--- billing-service ---"
+	cd services/billing-service && cargo test
+	@echo "--- file-service ---"
+	cd services/file-service && cargo test
+
+test-billing:
+	@echo "==> Running Billing Service tests (Rust)..."
+	cd services/billing-service && cargo test
+
+test-file:
+	@echo "==> Running File Service tests (Rust)..."
+	cd services/file-service && cargo test
 
 test-notification:
 	@echo "==> Running Notification Service tests..."
@@ -434,7 +480,9 @@ test-tenant-isolation:
 	cd tests/security/tenant-isolation && go test -v -count=1 ./...
 
 lint:
-	@echo "==> Running linters..."
+	@echo "==> Running ALL linters..."
+	@echo ""
+	@echo "========== Go Lint =========="
 	@echo "--- libs/go ---"
 	cd libs/go && golangci-lint run
 	@echo "--- auth-service ---"
@@ -445,10 +493,29 @@ lint:
 	cd services/notification-service && golangci-lint run
 	@echo "--- audit-service ---"
 	cd services/audit-service && golangci-lint run
+	@echo ""
+	@echo "========== TypeScript Lint =========="
 	@echo "--- libs/typescript ---"
 	cd libs/typescript && npx tsc --noEmit
 	@echo "--- api-gateway ---"
 	cd services/api-gateway && npx tsc --noEmit
+	@echo ""
+	@echo "========== Rust Lint =========="
+	@echo "--- libs/rust (clippy + fmt) ---"
+	cd libs/rust && cargo clippy --workspace -- -D warnings && cargo fmt --check
+	@echo "--- billing-service ---"
+	cd services/billing-service && cargo clippy -- -D warnings && cargo fmt --check
+	@echo "--- file-service ---"
+	cd services/file-service && cargo clippy -- -D warnings && cargo fmt --check
+
+lint-rust:
+	@echo "==> Running Rust linters..."
+	@echo "--- libs/rust ---"
+	cd libs/rust && cargo clippy --workspace -- -D warnings && cargo fmt --check
+	@echo "--- billing-service ---"
+	cd services/billing-service && cargo clippy -- -D warnings && cargo fmt --check
+	@echo "--- file-service ---"
+	cd services/file-service && cargo clippy -- -D warnings && cargo fmt --check
 
 # -------------------------
 # Security scans (scripts)

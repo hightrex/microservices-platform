@@ -139,9 +139,11 @@ export function registerProxyRoutes(
     { prefix: "/api/v1/notifications", serviceName: "notification-service", target: config.notificationBaseUrl ?? "", requiresAuth: true, available: !!config.notificationBaseUrl },
     { prefix: "/api/v1/audit", serviceName: "audit-service", target: config.auditBaseUrl ?? "", requiresAuth: true, available: !!config.auditBaseUrl },
 
-    // Phase 2/3 placeholder routes — return 503
-    { prefix: "/api/v1/billing", serviceName: "billing-service", target: "", requiresAuth: true, available: false },
-    { prefix: "/api/v1/files", serviceName: "file-service", target: "", requiresAuth: true, available: false },
+    // Phase 2 routes — billing + file (available when configured)
+    { prefix: "/api/v1/billing", serviceName: "billing-service", target: config.billingBaseUrl ?? "", requiresAuth: true, available: !!config.billingBaseUrl },
+    { prefix: "/api/v1/files", serviceName: "file-service", target: config.fileBaseUrl ?? "", requiresAuth: true, available: !!config.fileBaseUrl },
+
+    // Phase 3 placeholder routes — return 503
     { prefix: "/api/v1/analytics", serviceName: "analytics-service", target: "", requiresAuth: true, available: false },
   ];
 

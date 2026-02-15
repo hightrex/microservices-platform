@@ -13,6 +13,20 @@ export function healthHandler(config: GatewayConfig, redis: Redis) {
     { name: "org-service", url: `${config.orgBaseUrl}/health`, timeoutMs: 3000 },
   ];
 
+  // Dynamically add Phase 2 service health targets when configured
+  if (config.notificationBaseUrl) {
+    targets.push({ name: "notification-service", url: `${config.notificationBaseUrl}/health`, timeoutMs: 3000 });
+  }
+  if (config.auditBaseUrl) {
+    targets.push({ name: "audit-service", url: `${config.auditBaseUrl}/health`, timeoutMs: 3000 });
+  }
+  if (config.billingBaseUrl) {
+    targets.push({ name: "billing-service", url: `${config.billingBaseUrl}/health`, timeoutMs: 3000 });
+  }
+  if (config.fileBaseUrl) {
+    targets.push({ name: "file-service", url: `${config.fileBaseUrl}/health`, timeoutMs: 3000 });
+  }
+
   return async (_req: Request, res: Response): Promise<void> => {
     // Check downstream services
     const serviceHealth = await aggregateHealth(targets);

@@ -1,0 +1,38 @@
+# Billing Service Configuration
+# Environment variables with APP_ prefix override these values.
+# Nested keys use __ (double underscore) as separator.
+
+[server]
+host = "0.0.0.0"
+port = 8083
+cors_origins = ["http://localhost:3000"]
+
+[database]
+host = "localhost"
+port = 5432
+user = "billing_user"
+password = "billing_password"
+database = "billing_db"
+ssl_mode = "disable"
+max_connections = 10
+min_connections = 2
+
+[redis]
+host = "localhost"
+port = 6379
+password = ""
+db = 0
+
+[stripe]
+secret_key = ""
+webhook_secret = ""
+publishable_key = ""
+test_mode = true
+
+[logger]
+level = "info"
+environment = "local"
+
+[invoice]
+due_days = 30
+late_fee_percentage = 1.5

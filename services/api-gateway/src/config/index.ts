@@ -14,6 +14,8 @@ const configSchema = z.object({
   orgBaseUrl: z.string().url(),
   notificationBaseUrl: z.string().url().optional(),
   auditBaseUrl: z.string().url().optional(),
+  billingBaseUrl: z.string().url().optional(),
+  fileBaseUrl: z.string().url().optional(),
 
   // Redis
   redisUrl: z.string().default("redis://localhost:6379"),
@@ -58,6 +60,8 @@ function envToConfig(): Record<string, string | undefined> {
     orgBaseUrl: process.env["ORG_BASE_URL"],
     notificationBaseUrl: process.env["NOTIFICATION_BASE_URL"],
     auditBaseUrl: process.env["AUDIT_BASE_URL"],
+    billingBaseUrl: process.env["BILLING_BASE_URL"],
+    fileBaseUrl: process.env["FILE_BASE_URL"],
     redisUrl: process.env["REDIS_URL"],
     redisPassword: process.env["REDIS_PASSWORD"],
     redisDb: process.env["REDIS_DB"],

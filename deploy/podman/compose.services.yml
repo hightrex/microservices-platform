@@ -162,6 +162,101 @@ services:
       retries: 3
       start_period: 30s
 
+  billing-service:
+    build:
+      context: ../../
+      dockerfile: services/billing-service/Containerfile
+    container_name: platform-billing-service
+    restart: always
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      - APP_SERVER__HOST=0.0.0.0
+      - APP_SERVER__PORT=8083
+      - APP_DATABASE__HOST=platform-postgres
+      - APP_DATABASE__PORT=5432
+      - APP_DATABASE__USER=postgres
+      - APP_DATABASE__PASSWORD=postgres
+      - APP_DATABASE__DATABASE=billing_db
+      - APP_DATABASE__SSL_MODE=disable
+      - APP_DATABASE__MAX_CONNECTIONS=10
+      - APP_DATABASE__MIN_CONNECTIONS=2
+      - APP_REDIS__HOST=platform-redis
+      - APP_REDIS__PORT=6379
+      - APP_REDIS__PASSWORD=devredispass
+      - APP_REDIS__DB=3
+      - APP_STRIPE__SECRET_KEY=sk_test_placeholder
+      - APP_STRIPE__WEBHOOK_SECRET=whsec_placeholder
+      - APP_STRIPE__PUBLISHABLE_KEY=pk_test_placeholder
+      - APP_STRIPE__TEST_MODE=true
+      - APP_LOGGER__LEVEL=debug
+      - APP_LOGGER__ENVIRONMENT=dev
+    depends_on:
+      - auth-service
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+  file-service:
+    build:
+      context: ../../
+      dockerfile: services/file-service/Containerfile
+    container_name: platform-file-service
+    restart: always
+    ports:
+      - "127.0.0.1:8084:8084"
+    environment:
+      - APP_SERVER__HOST=0.0.0.0
+      - APP_SERVER__PORT=8084
+      - APP_DATABASE__HOST=platform-postgres
+      - APP_DATABASE__PORT=5432
+      - APP_DATABASE__USER=postgres
+      - APP_DATABASE__PASSWORD=postgres
+      - APP_DATABASE__DATABASE=file_db
+      - APP_DATABASE__SSL_MODE=disable
+      - APP_DATABASE__MAX_CONNECTIONS=10
+      - APP_DATABASE__MIN_CONNECTIONS=2
+      - APP_REDIS__HOST=platform-redis
+      - APP_REDIS__PORT=6379
+      - APP_REDIS__PASSWORD=devredispass
+      - APP_REDIS__DB=5
+      - APP_S3__ENDPOINT=http://platform-minio:9000
+      - APP_S3__REGION=us-east-1
+      - APP_S3__ACCESS_KEY=minioadmin
+      - APP_S3__SECRET_KEY=minioadmin
+      - APP_S3__BUCKET_PREFIX=platform
+      - APP_LOGGER__LEVEL=debug
+      - APP_LOGGER__ENVIRONMENT=dev
+    depends_on:
+      - auth-service
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
 networks:
   app-net:
     external: true

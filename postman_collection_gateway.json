@@ -1,8 +1,8 @@
 {
     "info": {
-        "_postman_id": "gateway-integration-collection",
+        "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "name": "API Gateway — Full Integration Suite",
-        "description": "End-to-end integration test collection for the API Gateway.\nCovers all Phase 1 endpoints, middleware features, and error handling.\nDesigned to run sequentially with Newman:\n  newman run postman_collection_gateway.json --env-var base_url=http://localhost:3000",
+        "description": "End-to-end integration test collection for the API Gateway.\nCovers all Phase 1 + Phase 2 endpoints, middleware features, and error handling.\nDesigned to run sequentially with Newman:\n  newman run postman_collection_gateway.json --env-var base_url=http://localhost:3000",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -17,12 +17,17 @@
         { "key": "dept_id", "value": "" },
         { "key": "second_email", "value": "" },
         { "key": "second_user_id", "value": "" },
-        { "key": "second_access_token", "value": "" }
+        { "key": "second_access_token", "value": "" },
+        { "key": "notification_id", "value": "" },
+        { "key": "file_id", "value": "" },
+        { "key": "invoice_id", "value": "" },
+        { "key": "billing_plan_id", "value": "" }
     ],
     "event": [
         {
             "listen": "prerequest",
             "script": {
+                "id": "pre-req-global-001",
                 "type": "text/javascript",
                 "exec": [
                     "// Generate unique email on first run",
@@ -37,14 +42,17 @@
     ],
     "item": [
         {
+            "id": "folder-01-gateway-infra",
             "name": "01 — Gateway Infrastructure",
             "item": [
                 {
+                    "id": "req-0101-health",
                     "name": "Health Check",
                     "event": [
                         {
                             "listen": "test",
                             "script": {
+                                "id": "test-0101",
                                 "type": "text/javascript",
                                 "exec": [
                                     "pm.test('Status 200', () => pm.response.to.have.status(200));",
@@ -70,6 +78,30 @@
                                     "    const dep = body.dependencies.find(d => d.name === 'redis');",
                                     "    pm.expect(dep).to.not.be.undefined;",
                                     "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('Notification service dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'notification-service');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('Audit service dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'audit-service');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('Billing service dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'billing-service');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
+                                    "});",
+                                    "",
+                                    "pm.test('File service dependency healthy', () => {",
+                                    "    const dep = body.dependencies.find(d => d.name === 'file-service');",
+                                    "    pm.expect(dep).to.not.be.undefined;",
+                                    "    pm.expect(dep.status).to.eql('healthy');",
                                     "});"
                                 ]
                             }
@@ -82,11 +114,13 @@
                     }
                 },
                 {
+                    "id": "req-0102-metrics",
                     "name": "Prometheus Metrics",
                     "event": [
                         {
                             "listen": "test",
                             "script": {
+                                "id": "test-0102",
                                 "type": "text/javascript",
                                 "exec": [
                                     "pm.test('Status 200', () => pm.response.to.have.status(200));",
@@ -107,11 +141,13 @@
                     }
                 },
                 {
+                    "id": "req-0103-security-headers",
                     "name": "Security Headers Present",
                     "event": [
                         {
                             "listen": "test",
                             "script": {
+                                "id": "test-0103",
                                 "type": "text/javascript",
                                 "exec": [
                                     "pm.test('X-Request-ID header present', () => {",
@@ -145,11 +181,13 @@
                     }
                 },
                 {
+                    "id": "req-0104-not-found",
                     "name": "404 Unknown Route",
                     "event": [
                         {
                             "listen": "test",
                             "script": {
+                                "id": "test-0104",
                                 "type": "text/javascript",
                                 "exec": [
                                     "pm.test('Status 404', () => pm.response.to.have.status(404));",
@@ -171,26 +209,20 @@
             ]
         },
         {
+            "id": "folder-02-jwt-enforcement",
             "name": "02 — JWT Enforcement",
             "item": [
                 {
+                    "id": "req-0201-no-token",
                     "name": "No Token → 401",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('Error code UNAUTHORIZED', () => {",
-                                    "    pm.expect(body.success).to.be.false;",
-                                    "    pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0201", "type": "text/javascript", "exec": [
+                        "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                        "const body = pm.response.json();",
+                        "pm.test('Error code UNAUTHORIZED', () => {",
+                        "    pm.expect(body.success).to.be.false;",
+                        "    pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -198,23 +230,16 @@
                     }
                 },
                 {
+                    "id": "req-0202-tampered-token",
                     "name": "Tampered Token → 401",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('Error code UNAUTHORIZED + invalid token message', () => {",
-                                    "    pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
-                                    "    pm.expect(body.error.message).to.include('Invalid token');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0202", "type": "text/javascript", "exec": [
+                        "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                        "const body = pm.response.json();",
+                        "pm.test('Error code UNAUTHORIZED + invalid token message', () => {",
+                        "    pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
+                        "    pm.expect(body.error.message).to.include('Invalid token');",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "GET",
                         "header": [
@@ -224,21 +249,14 @@
                     }
                 },
                 {
+                    "id": "req-0203-basic-auth",
                     "name": "Basic Auth → 401",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
-                                    "pm.test('Error code UNAUTHORIZED', () => {",
-                                    "    pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0203", "type": "text/javascript", "exec": [
+                        "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                        "pm.test('Error code UNAUTHORIZED', () => {",
+                        "    pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED');",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "GET",
                         "header": [
@@ -250,427 +268,304 @@
             ]
         },
         {
+            "id": "folder-03-auth-flow",
             "name": "03 — Auth Flow (Register → Login)",
             "item": [
                 {
+                    "id": "req-0301-register",
                     "name": "Register Primary User",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 201 or 200', () => {",
-                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                                    "});",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Returns user ID', () => {",
-                                    "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
-                                    "    pm.collectionVariables.set('user_id', body.data.id);",
-                                    "});",
-                                    "pm.test('Returns correct email', () => {",
-                                    "    pm.expect(body.data.email).to.eql(pm.collectionVariables.get('test_email'));",
-                                    "});",
-                                    "pm.test('Status is active', () => pm.expect(body.data.status).to.eql('active'));",
-                                    "pm.test('Has created_at timestamp', () => pm.expect(body.data.created_at).to.be.a('string'));"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0301", "type": "text/javascript", "exec": [
+                        "pm.test('Status 201 or 200', () => {",
+                        "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                        "});",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns user ID', () => {",
+                        "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                        "    pm.collectionVariables.set('user_id', body.data.id);",
+                        "});",
+                        "pm.test('Returns correct email', () => {",
+                        "    pm.expect(body.data.email).to.eql(pm.collectionVariables.get('test_email'));",
+                        "});",
+                        "pm.test('Status is active', () => pm.expect(body.data.status).to.eql('active'));",
+                        "pm.test('Has created_at timestamp', () => pm.expect(body.data.created_at).to.be.a('string'));"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"first_name\": \"Newman\",\n    \"last_name\": \"TestUser\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"first_name\": \"Newman\",\n    \"last_name\": \"TestUser\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] }
                     }
                 },
                 {
+                    "id": "req-0302-register-dup",
                     "name": "Register Duplicate Email → Rejected",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 400 or 409 (duplicate rejected)', () => {",
-                                    "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
-                                    "});",
-                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0302", "type": "text/javascript", "exec": [
+                        "pm.test('Status 400 or 409 (duplicate rejected)', () => {",
+                        "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                        "});",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"first_name\": \"Dup\",\n    \"last_name\": \"User\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"first_name\": \"Dup\",\n    \"last_name\": \"User\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] }
                     }
                 },
                 {
+                    "id": "req-0303-register-validation",
                     "name": "Register Validation Error (bad email)",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0303", "type": "text/javascript", "exec": [
+                        "pm.test('Status 400 or 429 (rate-limited)', () => {",
+                        "    pm.expect(pm.response.code).to.be.oneOf([400, 429]);",
+                        "});",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"not-an-email\",\n    \"password\": \"x\",\n    \"first_name\": \"\",\n    \"last_name\": \"\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"not-an-email\",\n    \"password\": \"x\",\n    \"first_name\": \"\",\n    \"last_name\": \"\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] }
                     }
                 },
                 {
+                    "id": "req-0304-login",
                     "name": "Login",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Returns access_token', () => {",
-                                    "    pm.expect(body.data.access_token).to.be.a('string').and.not.empty;",
-                                    "    pm.collectionVariables.set('access_token', body.data.access_token);",
-                                    "});",
-                                    "pm.test('Returns refresh_token', () => {",
-                                    "    pm.expect(body.data.refresh_token).to.be.a('string').and.not.empty;",
-                                    "    pm.collectionVariables.set('refresh_token', body.data.refresh_token);",
-                                    "});",
-                                    "pm.test('token_type is Bearer', () => pm.expect(body.data.token_type).to.eql('Bearer'));",
-                                    "pm.test('expires_in is positive number', () => pm.expect(body.data.expires_in).to.be.above(0));",
-                                    "pm.test('User object returned with correct ID', () => {",
-                                    "    pm.expect(body.data.user.id).to.eql(pm.collectionVariables.get('user_id'));",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0304", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns access_token', () => {",
+                        "    pm.expect(body.data.access_token).to.be.a('string').and.not.empty;",
+                        "    pm.collectionVariables.set('access_token', body.data.access_token);",
+                        "});",
+                        "pm.test('Returns refresh_token', () => {",
+                        "    pm.expect(body.data.refresh_token).to.be.a('string').and.not.empty;",
+                        "    pm.collectionVariables.set('refresh_token', body.data.refresh_token);",
+                        "});",
+                        "pm.test('token_type is Bearer', () => pm.expect(body.data.token_type).to.eql('Bearer'));",
+                        "pm.test('expires_in is positive number', () => pm.expect(body.data.expires_in).to.be.above(0));",
+                        "pm.test('User object returned with correct ID', () => {",
+                        "    pm.expect(body.data.user.id).to.eql(pm.collectionVariables.get('user_id'));",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
                     }
                 },
                 {
+                    "id": "req-0305-login-wrong-pw",
                     "name": "Login Wrong Password → 401",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 401', () => pm.response.to.have.status(401));",
-                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0305", "type": "text/javascript", "exec": [
+                        "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"WrongPassword123!\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"WrongPassword123!\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
                     }
                 }
             ]
         },
         {
+            "id": "folder-04-user-management",
             "name": "04 — User Management (Authenticated)",
             "item": [
                 {
+                    "id": "req-0401-list-users",
                     "name": "List Users (paginated)",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Returns items array', () => pm.expect(body.data.items).to.be.an('array'));",
-                                    "pm.test('Has total_count', () => pm.expect(body.data.total_count).to.be.a('number'));",
-                                    "pm.test('Has page', () => pm.expect(body.data.page).to.be.a('number'));",
-                                    "pm.test('Has page_size', () => pm.expect(body.data.page_size).to.be.a('number'));",
-                                    "pm.test('Has total_pages', () => pm.expect(body.data.total_pages).to.be.a('number'));",
-                                    "pm.test('Our user is in the list', () => {",
-                                    "    const found = body.data.items.find(u => u.id === pm.collectionVariables.get('user_id'));",
-                                    "    pm.expect(found).to.not.be.undefined;",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0401", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns items array', () => pm.expect(body.data.items).to.be.an('array'));",
+                        "pm.test('Has total_count', () => pm.expect(body.data.total_count).to.be.a('number'));",
+                        "pm.test('Has page', () => pm.expect(body.data.page).to.be.a('number'));",
+                        "pm.test('Has page_size', () => pm.expect(body.data.page_size).to.be.a('number'));",
+                        "pm.test('Has total_pages', () => pm.expect(body.data.total_pages).to.be.a('number'));",
+                        "pm.test('Our user is in the list', () => {",
+                        "    const found = body.data.items.find(u => u.id === pm.collectionVariables.get('user_id'));",
+                        "    pm.expect(found).to.not.be.undefined;",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "GET",
-                        "header": [
-                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
-                        ],
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
                         "url": { "raw": "{{base_url}}/api/v1/users?page=1&page_size=20", "host": ["{{base_url}}"], "path": ["api","v1","users"], "query": [{"key":"page","value":"1"},{"key":"page_size","value":"20"}] }
                     }
                 },
                 {
+                    "id": "req-0402-get-user",
                     "name": "Get User by ID",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Correct user ID', () => pm.expect(body.data.id).to.eql(pm.collectionVariables.get('user_id')));",
-                                    "pm.test('Has email field', () => pm.expect(body.data.email).to.be.a('string'));",
-                                    "pm.test('Has first_name', () => pm.expect(body.data.first_name).to.eql('Newman'));",
-                                    "pm.test('Has status=active', () => pm.expect(body.data.status).to.eql('active'));",
-                                    "pm.test('No password_hash in response', () => pm.expect(body.data.password_hash).to.be.undefined);"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0402", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Correct user ID', () => pm.expect(body.data.id).to.eql(pm.collectionVariables.get('user_id')));",
+                        "pm.test('Has email field', () => pm.expect(body.data.email).to.be.a('string'));",
+                        "pm.test('Has first_name', () => pm.expect(body.data.first_name).to.eql('Newman'));",
+                        "pm.test('Has status=active', () => pm.expect(body.data.status).to.eql('active'));",
+                        "pm.test('No password_hash in response', () => pm.expect(body.data.password_hash).to.be.undefined);"
+                    ]}}],
                     "request": {
                         "method": "GET",
-                        "header": [
-                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
-                        ],
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
                         "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}"] }
                     }
                 },
                 {
+                    "id": "req-0403-update-user",
                     "name": "Update User",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Name updated', () => {",
-                                    "    pm.expect(body.data.first_name).to.eql('UpdatedFirst');",
-                                    "    pm.expect(body.data.last_name).to.eql('UpdatedLast');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0403", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Name updated', () => {",
+                        "    pm.expect(body.data.first_name).to.eql('UpdatedFirst');",
+                        "    pm.expect(body.data.last_name).to.eql('UpdatedLast');",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "PUT",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "Authorization", "value": "Bearer {{access_token}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"first_name\": \"UpdatedFirst\",\n    \"last_name\": \"UpdatedLast\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"first_name\": \"UpdatedFirst\",\n    \"last_name\": \"UpdatedLast\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}"] }
                     }
                 },
                 {
+                    "id": "req-0404-list-sessions",
                     "name": "List User Sessions",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Returns sessions array', () => pm.expect(body.data).to.be.an('array'));"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0404", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns sessions array', () => pm.expect(body.data).to.be.an('array'));"
+                    ]}}],
                     "request": {
                         "method": "GET",
-                        "header": [
-                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
-                        ],
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
                         "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}/sessions", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}","sessions"] }
                     }
                 },
                 {
+                    "id": "req-0405-change-password",
                     "name": "Change Password",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "// Update stored password for subsequent logins",
-                                    "pm.collectionVariables.set('test_password', 'NewSecureP@ss456!');"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0405", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.collectionVariables.set('test_password', 'NewSecureP@ss456!');"
+                    ]}}],
                     "request": {
                         "method": "PUT",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "Authorization", "value": "Bearer {{access_token}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"old_password\": \"SecureP@ss123!\",\n    \"new_password\": \"NewSecureP@ss456!\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"old_password\": \"SecureP@ss123!\",\n    \"new_password\": \"NewSecureP@ss456!\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/users/{{user_id}}/password", "host": ["{{base_url}}"], "path": ["api","v1","users","{{user_id}}","password"] }
                     }
                 },
                 {
+                    "id": "req-0406-relogin",
                     "name": "Re-Login with New Password",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('Login succeeds with new password', () => {",
-                                    "    pm.expect(body.success).to.be.true;",
-                                    "    pm.expect(body.data.access_token).to.be.a('string');",
-                                    "    pm.collectionVariables.set('access_token', body.data.access_token);",
-                                    "    pm.collectionVariables.set('refresh_token', body.data.refresh_token);",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0406", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('Login succeeds with new password', () => {",
+                        "    pm.expect(body.success).to.be.true;",
+                        "    pm.expect(body.data.access_token).to.be.a('string');",
+                        "    pm.collectionVariables.set('access_token', body.data.access_token);",
+                        "    pm.collectionVariables.set('refresh_token', body.data.refresh_token);",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
                     }
                 }
             ]
         },
         {
+            "id": "folder-05-org-service",
             "name": "05 — Organization Service (via Gateway)",
             "item": [
                 {
+                    "id": "req-0501-list-plans",
                     "name": "List Available Plans",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Returns array of plans', () => pm.expect(body.data).to.be.an('array'));",
-                                    "pm.test('Has at least 4 plans', () => pm.expect(body.data.length).to.be.at.least(4));",
-                                    "const names = body.data.map(p => p.name);",
-                                    "pm.test('Contains free plan', () => pm.expect(names).to.include('free'));",
-                                    "pm.test('Contains starter plan', () => pm.expect(names).to.include('starter'));",
-                                    "pm.test('Contains business plan', () => pm.expect(names).to.include('business'));",
-                                    "pm.test('Contains enterprise plan', () => pm.expect(names).to.include('enterprise'));",
-                                    "pm.test('Plan has expected fields', () => {",
-                                    "    const plan = body.data[0];",
-                                    "    pm.expect(plan).to.have.property('max_users');",
-                                    "    pm.expect(plan).to.have.property('max_storage_bytes');",
-                                    "    pm.expect(plan).to.have.property('available_modules');",
-                                    "    pm.expect(plan).to.have.property('price_monthly_cents');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0501", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns array of plans', () => pm.expect(body.data).to.be.an('array'));",
+                        "pm.test('Has at least 4 plans', () => pm.expect(body.data.length).to.be.at.least(4));",
+                        "const names = body.data.map(p => p.name);",
+                        "pm.test('Contains free plan', () => pm.expect(names).to.include('free'));",
+                        "pm.test('Contains starter plan', () => pm.expect(names).to.include('starter'));",
+                        "pm.test('Contains business plan', () => pm.expect(names).to.include('business'));",
+                        "pm.test('Contains enterprise plan', () => pm.expect(names).to.include('enterprise'));",
+                        "pm.test('Plan has expected fields', () => {",
+                        "    const plan = body.data[0];",
+                        "    pm.expect(plan).to.have.property('max_users');",
+                        "    pm.expect(plan).to.have.property('max_storage_bytes');",
+                        "    pm.expect(plan).to.have.property('available_modules');",
+                        "    pm.expect(plan).to.have.property('price_monthly_cents');",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "GET",
-                        "header": [
-                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
-                        ],
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
                         "url": { "raw": "{{base_url}}/api/v1/plans", "host": ["{{base_url}}"], "path": ["api","v1","plans"] }
                     }
                 },
                 {
+                    "id": "req-0502-create-org",
                     "name": "Create Organization",
                     "event": [
-                        {
-                            "listen": "prerequest",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.collectionVariables.set('org_slug', 'newmanorg' + Date.now());"
-                                ]
-                            }
-                        },
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 201 or 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
-                                    "pm.test('Returns org ID', () => {",
-                                    "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
-                                    "    pm.collectionVariables.set('org_id', body.data.id);",
-                                    "});",
-                                    "pm.test('Name matches', () => pm.expect(body.data.name).to.eql('Newman Test Org'));",
-                                    "pm.test('Plan is starter', () => pm.expect(body.data.plan).to.eql('starter'));",
-                                    "pm.test('Status is active', () => pm.expect(body.data.status).to.eql('active'));"
-                                ]
-                            }
-                        }
+                        { "listen": "prerequest", "script": { "id": "pre-0502", "type": "text/javascript", "exec": [
+                            "pm.collectionVariables.set('org_slug', 'newmanorg' + Date.now());"
+                        ]}},
+                        { "listen": "test", "script": { "id": "test-0502", "type": "text/javascript", "exec": [
+                            "pm.test('Status 201 or 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                            "const body = pm.response.json();",
+                            "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                            "pm.test('Returns org ID', () => {",
+                            "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                            "    pm.collectionVariables.set('org_id', body.data.id);",
+                            "});",
+                            "pm.test('Name matches', () => pm.expect(body.data.name).to.eql('Newman Test Org'));",
+                            "pm.test('Plan is starter', () => pm.expect(body.data.plan).to.eql('starter'));",
+                            "pm.test('Status is active', () => pm.expect(body.data.status).to.eql('active'));"
+                        ]}}
                     ],
                     "request": {
                         "method": "POST",
@@ -678,168 +573,491 @@
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "Authorization", "value": "Bearer {{access_token}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"Newman Test Org\",\n    \"slug\": \"{{org_slug}}\",\n    \"plan\": \"starter\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"name\": \"Newman Test Org\",\n    \"slug\": \"{{org_slug}}\",\n    \"plan\": \"starter\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/organizations", "host": ["{{base_url}}"], "path": ["api","v1","organizations"] }
                     }
                 },
                 {
+                    "id": "req-0503-create-org-validation",
                     "name": "Create Organization — Validation Error (empty name)",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-0503", "type": "text/javascript", "exec": [
+                        "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "Authorization", "value": "Bearer {{access_token}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"\",\n    \"slug\": \"\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"name\": \"\",\n    \"slug\": \"\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/organizations", "host": ["{{base_url}}"], "path": ["api","v1","organizations"] }
                     }
                 }
             ]
         },
         {
-            "name": "06 — Phase 2/3 Placeholder Routes",
+            "id": "folder-06-notification-service",
+            "name": "06 — Notification Service (via Gateway)",
             "item": [
                 {
-                    "name": "Notifications → Blocked",
-                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
-                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    "id": "req-0601-list-notifications",
+                    "name": "List Notifications",
+                    "event": [{ "listen": "test", "script": { "id": "test-0601", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns data with notifications', () => {",
+                        "    pm.expect(body.data).to.have.property('notifications');",
+                        "    pm.expect(body.data.notifications).to.be.an('array');",
+                        "});",
+                        "if (body.data.notifications && body.data.notifications.length > 0) {",
+                        "    pm.collectionVariables.set('notification_id', body.data.notifications[0].id);",
+                        "}"
                     ]}}],
-                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-                        "url": { "raw": "{{base_url}}/api/v1/notifications", "host": ["{{base_url}}"], "path": ["api","v1","notifications"] } }
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/notifications", "host": ["{{base_url}}"], "path": ["api","v1","notifications"] }
+                    }
                 },
                 {
-                    "name": "Billing → Blocked",
-                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
-                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    "id": "req-0602-unread-count",
+                    "name": "Get Unread Count",
+                    "event": [{ "listen": "test", "script": { "id": "test-0602", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns unread_count', () => {",
+                        "    pm.expect(body.data).to.have.property('unread_count');",
+                        "    pm.expect(body.data.unread_count).to.be.a('number');",
+                        "});"
                     ]}}],
-                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-                        "url": { "raw": "{{base_url}}/api/v1/billing", "host": ["{{base_url}}"], "path": ["api","v1","billing"] } }
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/notifications/unread/count", "host": ["{{base_url}}"], "path": ["api","v1","notifications","unread","count"] }
+                    }
                 },
                 {
-                    "name": "Files → Blocked",
-                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
-                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    "id": "req-0603-get-preferences",
+                    "name": "Get Notification Preferences",
+                    "event": [{ "listen": "test", "script": { "id": "test-0603", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns preferences data', () => {",
+                        "    pm.expect(body.data).to.be.an('object');",
+                        "});"
                     ]}}],
-                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-                        "url": { "raw": "{{base_url}}/api/v1/files", "host": ["{{base_url}}"], "path": ["api","v1","files"] } }
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/notifications/preferences", "host": ["{{base_url}}"], "path": ["api","v1","notifications","preferences"] }
+                    }
                 },
                 {
-                    "name": "Audit → Blocked",
-                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
-                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    "id": "req-0604-list-templates",
+                    "name": "List Notification Templates",
+                    "event": [{ "listen": "test", "script": { "id": "test-0604", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns templates', () => {",
+                        "    pm.expect(body.data).to.have.property('templates');",
+                        "    pm.expect(body.data.templates).to.be.an('array');",
+                        "});"
                     ]}}],
-                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-                        "url": { "raw": "{{base_url}}/api/v1/audit", "host": ["{{base_url}}"], "path": ["api","v1","audit"] } }
-                },
-                {
-                    "name": "Analytics → Blocked",
-                    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
-                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
-                    ]}}],
-                    "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-                        "url": { "raw": "{{base_url}}/api/v1/analytics", "host": ["{{base_url}}"], "path": ["api","v1","analytics"] } }
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/notifications/templates", "host": ["{{base_url}}"], "path": ["api","v1","notifications","templates"] }
+                    }
                 }
             ]
         },
         {
-            "name": "07 — Logout & Token Invalidation",
+            "id": "folder-07-billing-service",
+            "name": "07 — Billing Service (via Gateway)",
             "item": [
                 {
-                    "name": "Logout",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('success is true', () => pm.expect(body.success).to.be.true);"
-                                ]
-                            }
-                        }
-                    ],
+                    "id": "req-0701-list-billing-plans",
+                    "name": "List Billing Plans",
+                    "event": [{ "listen": "test", "script": { "id": "test-0701", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns plans array', () => pm.expect(body.data).to.be.an('array'));",
+                        "pm.test('Capture first plan_id for subscription test', () => {",
+                        "    pm.expect(body.data.length).to.be.above(0);",
+                        "    pm.collectionVariables.set('billing_plan_id', body.data[0].id);",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/billing/plans", "host": ["{{base_url}}"], "path": ["api","v1","billing","plans"] }
+                    }
+                },
+                {
+                    "id": "req-0702-create-subscription",
+                    "name": "Create Subscription",
+                    "event": [{ "listen": "test", "script": { "id": "test-0702", "type": "text/javascript", "exec": [
+                        "const code = pm.response.code;",
+                        "pm.test('Status 200, 201, or 409 (already subscribed)', () => {",
+                        "    pm.expect(code).to.be.oneOf([200, 201, 409]);",
+                        "});",
+                        "const body = pm.response.json();",
+                        "if (code === 200 || code === 201) {",
+                        "    pm.test('success is true (new subscription)', () => pm.expect(body.success).to.be.true);",
+                        "    pm.test('Returns subscription data', () => {",
+                        "        pm.expect(body.data).to.be.an('object');",
+                        "        pm.expect(body.data).to.have.property('id');",
+                        "    });",
+                        "} else {",
+                        "    pm.test('409 means tenant already has active subscription', () => {",
+                        "        pm.expect(body.success).to.be.false;",
+                        "    });",
+                        "}"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
+                            { "key": "Content-Type", "value": "application/json" },
                             { "key": "Authorization", "value": "Bearer {{access_token}}" }
                         ],
+                        "body": { "mode": "raw", "raw": "{\n    \"plan_id\": \"{{billing_plan_id}}\"\n}" },
+                        "url": { "raw": "{{base_url}}/api/v1/billing/subscription", "host": ["{{base_url}}"], "path": ["api","v1","billing","subscription"] }
+                    }
+                },
+                {
+                    "id": "req-0703-get-subscription",
+                    "name": "Get Current Subscription",
+                    "event": [{ "listen": "test", "script": { "id": "test-0703", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns subscription data (object or null if none)', () => {",
+                        "    pm.expect(body.data === null || typeof body.data === 'object').to.be.true;",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/billing/subscription", "host": ["{{base_url}}"], "path": ["api","v1","billing","subscription"] }
+                    }
+                },
+                {
+                    "id": "req-0704-list-invoices",
+                    "name": "List Invoices",
+                    "event": [{ "listen": "test", "script": { "id": "test-0704", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns data', () => {",
+                        "    pm.expect(body.data).to.be.an('array');",
+                        "});",
+                        "if (body.data && body.data.length > 0) {",
+                        "    pm.collectionVariables.set('invoice_id', body.data[0].id);",
+                        "}"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/billing/invoices", "host": ["{{base_url}}"], "path": ["api","v1","billing","invoices"] }
+                    }
+                },
+                {
+                    "id": "req-0705-record-usage",
+                    "name": "Record Usage",
+                    "event": [{ "listen": "test", "script": { "id": "test-0705", "type": "text/javascript", "exec": [
+                        "const code = pm.response.code;",
+                        "pm.test('Status 200 or 201 (usage recorded)', () => {",
+                        "    pm.expect(code).to.be.oneOf([200, 201]);",
+                        "});",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);"
+                    ]}}],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                        ],
+                        "body": { "mode": "raw", "raw": "{\n    \"metric_name\": \"api_calls\",\n    \"quantity\": 100\n}" },
+                        "url": { "raw": "{{base_url}}/api/v1/billing/usage/record", "host": ["{{base_url}}"], "path": ["api","v1","billing","usage","record"] }
+                    }
+                },
+                {
+                    "id": "req-0706-get-usage",
+                    "name": "Get Usage Summary",
+                    "event": [{ "listen": "test", "script": { "id": "test-0706", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns usage data', () => {",
+                        "    pm.expect(body.data).to.be.an('object');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/billing/usage?metric_name=api_calls", "host": ["{{base_url}}"], "path": ["api","v1","billing","usage"], "query": [{"key":"metric_name","value":"api_calls"}] }
+                    }
+                },
+                {
+                    "id": "req-0707-get-quota",
+                    "name": "Get Usage Quota",
+                    "event": [{ "listen": "test", "script": { "id": "test-0707", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns quota data', () => {",
+                        "    pm.expect(body.data).to.be.an('object');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/billing/usage/quota?metric_name=api_calls", "host": ["{{base_url}}"], "path": ["api","v1","billing","usage","quota"], "query": [{"key":"metric_name","value":"api_calls"}] }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "folder-08-file-service",
+            "name": "08 — File Service (via Gateway)",
+            "item": [
+                {
+                    "id": "req-0801-list-files-empty",
+                    "name": "List Files (initially empty)",
+                    "event": [{ "listen": "test", "script": { "id": "test-0801", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns data array', () => {",
+                        "    pm.expect(body.data).to.be.an('array');",
+                        "});",
+                        "pm.test('Has pagination info', () => {",
+                        "    pm.expect(body.pagination).to.be.an('object');",
+                        "    pm.expect(body.pagination).to.have.property('total');",
+                        "    pm.expect(body.pagination).to.have.property('page');",
+                        "    pm.expect(body.pagination).to.have.property('per_page');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/files", "host": ["{{base_url}}"], "path": ["api","v1","files"] }
+                    }
+                },
+                {
+                    "id": "req-0802-get-quota",
+                    "name": "Get Storage Quota",
+                    "event": [{ "listen": "test", "script": { "id": "test-0802", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns quota data', () => {",
+                        "    pm.expect(body.data).to.be.an('object');",
+                        "    pm.expect(body.data).to.have.property('quota_bytes');",
+                        "    pm.expect(body.data).to.have.property('used_bytes');",
+                        "    pm.expect(body.data).to.have.property('remaining_bytes');",
+                        "    pm.expect(body.data).to.have.property('usage_percentage');",
+                        "});",
+                        "pm.test('Quota is reasonable', () => {",
+                        "    pm.expect(body.data.quota_bytes).to.be.above(0);",
+                        "    pm.expect(body.data.usage_percentage).to.be.at.most(100);",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/files/quota", "host": ["{{base_url}}"], "path": ["api","v1","files","quota"] }
+                    }
+                },
+                {
+                    "id": "req-0803-get-nonexistent-file",
+                    "name": "Get Non-existent File → 404",
+                    "event": [{ "listen": "test", "script": { "id": "test-0803", "type": "text/javascript", "exec": [
+                        "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is false', () => pm.expect(body.success).to.be.false);",
+                        "pm.test('Error code present', () => {",
+                        "    pm.expect(body.error).to.be.an('object');",
+                        "    pm.expect(body.error).to.have.property('code');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/files/00000000-0000-0000-0000-000000000000", "host": ["{{base_url}}"], "path": ["api","v1","files","00000000-0000-0000-0000-000000000000"] }
+                    }
+                },
+                {
+                    "id": "req-0804-delete-nonexistent",
+                    "name": "Delete Non-existent File → 404",
+                    "event": [{ "listen": "test", "script": { "id": "test-0804", "type": "text/javascript", "exec": [
+                        "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is false', () => pm.expect(body.success).to.be.false);"
+                    ]}}],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/files/00000000-0000-0000-0000-000000000000", "host": ["{{base_url}}"], "path": ["api","v1","files","00000000-0000-0000-0000-000000000000"] }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "folder-09-audit-service",
+            "name": "09 — Audit Service (via Gateway)",
+            "item": [
+                {
+                    "id": "req-0901-list-audit-logs",
+                    "name": "List Audit Logs",
+                    "event": [{ "listen": "test", "script": { "id": "test-0901", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns audit logs data', () => {",
+                        "    pm.expect(body.data).to.have.property('logs');",
+                        "    pm.expect(body.data.logs).to.be.an('array');",
+                        "});",
+                        "pm.test('Has pagination', () => {",
+                        "    pm.expect(body.data).to.have.property('total');",
+                        "    pm.expect(body.data.total).to.be.a('number');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/audit/logs?page=1&page_size=20", "host": ["{{base_url}}"], "path": ["api","v1","audit","logs"], "query": [{"key":"page","value":"1"},{"key":"page_size","value":"20"}] }
+                    }
+                },
+                {
+                    "id": "req-0902-audit-stats",
+                    "name": "Get Audit Stats",
+                    "event": [{ "listen": "test", "script": { "id": "test-0902", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns stats data', () => {",
+                        "    pm.expect(body.data).to.be.an('object');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/audit/stats", "host": ["{{base_url}}"], "path": ["api","v1","audit","stats"] }
+                    }
+                },
+                {
+                    "id": "req-0903-list-exports",
+                    "name": "List Audit Exports",
+                    "event": [{ "listen": "test", "script": { "id": "test-0903", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);",
+                        "pm.test('Returns exports data', () => {",
+                        "    pm.expect(body.data).to.be.an('object');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/audit/logs/exports", "host": ["{{base_url}}"], "path": ["api","v1","audit","logs","exports"] }
+                    }
+                },
+                {
+                    "id": "req-0904-retention-policies",
+                    "name": "List Retention Policies",
+                    "event": [{ "listen": "test", "script": { "id": "test-0904", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200 or 403 (admin-only)', () => {",
+                        "    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+                        "});",
+                        "const body = pm.response.json();",
+                        "pm.test('Has success field', () => {",
+                        "    pm.expect(body).to.have.property('success');",
+                        "});"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/audit/retention-policies", "host": ["{{base_url}}"], "path": ["api","v1","audit","retention-policies"] }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "folder-10-phase3-placeholder",
+            "name": "10 — Phase 3 Placeholder Routes",
+            "item": [
+                {
+                    "id": "req-1001-analytics-blocked",
+                    "name": "Analytics → Blocked (503)",
+                    "event": [{ "listen": "test", "script": { "id": "test-1001", "type": "text/javascript", "exec": [
+                        "pm.test('Blocked with 401 or 403 or 503', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 503]));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                        "url": { "raw": "{{base_url}}/api/v1/analytics", "host": ["{{base_url}}"], "path": ["api","v1","analytics"] }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "folder-11-logout",
+            "name": "11 — Logout & Token Invalidation",
+            "item": [
+                {
+                    "id": "req-1101-logout",
+                    "name": "Logout",
+                    "event": [{ "listen": "test", "script": { "id": "test-1101", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('success is true', () => pm.expect(body.success).to.be.true);"
+                    ]}}],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
                         "url": { "raw": "{{base_url}}/api/v1/auth/logout", "host": ["{{base_url}}"], "path": ["api","v1","auth","logout"] }
                     }
                 },
                 {
+                    "id": "req-1102-use-blacklisted",
                     "name": "Use Logged-Out Token → Rejected",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 401 (token blacklisted)', () => pm.response.to.have.status(401));",
-                                    "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-1102", "type": "text/javascript", "exec": [
+                        "pm.test('Status 401 (token blacklisted)', () => pm.response.to.have.status(401));",
+                        "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                    ]}}],
                     "request": {
                         "method": "GET",
-                        "header": [
-                            { "key": "Authorization", "value": "Bearer {{access_token}}" }
-                        ],
+                        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
                         "url": { "raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api","v1","users"] }
                     }
                 },
                 {
+                    "id": "req-1103-final-relogin",
                     "name": "Final Re-Login (verify account still works)",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "type": "text/javascript",
-                                "exec": [
-                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                                    "const body = pm.response.json();",
-                                    "pm.test('Login succeeds after logout', () => {",
-                                    "    pm.expect(body.success).to.be.true;",
-                                    "    pm.expect(body.data.access_token).to.be.a('string');",
-                                    "});"
-                                ]
-                            }
-                        }
-                    ],
+                    "event": [{ "listen": "test", "script": { "id": "test-1103", "type": "text/javascript", "exec": [
+                        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                        "const body = pm.response.json();",
+                        "pm.test('Login succeeds after logout', () => {",
+                        "    pm.expect(body.success).to.be.true;",
+                        "    pm.expect(body.data.access_token).to.be.a('string');",
+                        "});"
+                    ]}}],
                     "request": {
                         "method": "POST",
                         "header": [
                             { "key": "Content-Type", "value": "application/json" },
                             { "key": "X-Tenant-ID", "value": "{{tenant_id}}" }
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
-                        },
+                        "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}" },
                         "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] }
                     }
                 }
