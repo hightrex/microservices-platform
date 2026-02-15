@@ -1,9 +1,9 @@
 # Phase 2: Modular Services (Weeks 11–18)
 
-> **Status**: ⚪ NOT STARTED
-> **Prerequisite**: Phase 1 complete (`m1-core-platform-mvp`)
-> **Milestone**: M2 — All 8 services running, module gating working, full event-driven architecture
-> **Dependency order**: Shared Rust Crate → (Billing + File + Notification + Audit in parallel) → Integration
+> **Status**: 🟡 IN PROGRESS (Track B: Notification + Audit services complete)
+> **Prerequisite**: Phase 1 complete (`m1-core-platform-ready`)
+> **Milestone**: M2 — All 7 services running, module gating working, full event-driven architecture
+> **Dependency order**: Shared Rust Crate → (Billing + File in parallel) | (Notification + Audit in parallel, no Rust dependency) → Integration
 
 ---
 
@@ -615,7 +615,7 @@ All queries use `libs/rust/database` helpers and tenant scoping.
 
 ### 2.3.10 Containerfile
 - [ ] Multi-stage Rust build (builder → runtime)
-- [ ] Use `rust:1.75-slim` for builder
+- [ ] Use latest stable `rust:<version>-slim` for builder (check current stable at build time)
 - [ ] Use `debian:bookworm-slim` for runtime
 - [ ] Non-root user
 - [ ] `HEALTHCHECK` instruction
@@ -1107,20 +1107,21 @@ Publish own events:
 Bring all Phase 2 services together with Phase 1 core platform.
 
 ### 2.6.1 Compose Stack
-- [ ] Update `deploy/podman/compose.services.yml`:
+- [ ] Update `deploy/podman/compose.services.yml` (already has auth + org from Phase 1):
   - [ ] Add `notification-service` container (port 8082)
   - [ ] Add `billing-service` container (port 8083)
   - [ ] Add `file-service` container (port 8084)
   - [ ] Add `audit-service` container (port 8085)
   - [ ] Configure service dependencies (wait for DB, Redis)
-  - [ ] Apply security hardening (cap_drop, resource limits)
-  - [ ] Add healthchecks
-- [ ] Update `.env` with new service environment variables:
+  - [ ] Apply security hardening (cap_drop, resource limits, no-new-privileges)
+  - [ ] Add healthchecks for all new services
+- [ ] Update `.env.example` with new service environment variables:
   - [ ] Notification: SMTP, Twilio config
-  - [ ] Billing: Stripe keys
+  - [ ] Billing: Stripe keys (test mode)
   - [ ] File: MinIO endpoint, ClamAV endpoint
   - [ ] Audit: retention defaults
-- [ ] Create `deploy/podman/compose.full.yml` — includes base + core + services
+- [ ] Add MinIO and ClamAV to `deploy/podman/compose.base.yml` (if not already present)
+- [ ] Verify `podman-compose -f compose.base.yml -f compose.services.yml -f compose.core.yml up` starts full stack
 
 ### 2.6.2 API Gateway Integration
 - [ ] Update API Gateway to proxy Phase 2 services:
@@ -1321,13 +1322,13 @@ Extend tenant isolation test suite to Phase 2 services:
 
 ### Service Completion
 - [ ] Shared Rust library (`libs/rust/`) — all crates compiling and tested
-- [ ] Notification Service — all channels working, templates rendering, events consumed
-- [ ] Billing Service — Stripe integration working, subscriptions, invoicing, usage tracking
-- [ ] File Service — MinIO storage, virus scanning, quotas, thumbnails
-- [ ] Audit Service — event capture, hash chaining, exports, retention
+- [ ] Notification Service (Go) — all channels working, templates rendering, events consumed
+- [ ] Billing Service (Rust) — Stripe integration working, subscriptions, invoicing, usage tracking
+- [ ] File Service (Rust) — MinIO storage, virus scanning, quotas, thumbnails
+- [ ] Audit Service (Go) — event capture, hash chaining, exports, retention
 
 ### Integration
-- [ ] All 5 services (Auth, Org, Notification, Billing, File, Audit) running via Compose
+- [ ] All 7 services (Auth, Org, Gateway, Notification, Billing, File, Audit) running via Compose
 - [ ] API Gateway proxying all services with module gating
 - [ ] Cross-service event flows working (e.g., login → audit log → notification)
 - [ ] End-to-end workflows tested and passing
@@ -1354,7 +1355,7 @@ Extend tenant isolation test suite to Phase 2 services:
 - [ ] Load tests passing (< 100ms p95)
 
 ### Infrastructure
-- [ ] `make full-up` starts infra + all 5 services + gateway cleanly
+- [ ] `make full-up` starts infra + all 6 services + gateway cleanly
 - [ ] All services containerized and healthy
 - [ ] Service health monitoring working
 - [ ] Circuit breakers functioning
@@ -1366,11 +1367,12 @@ Extend tenant isolation test suite to Phase 2 services:
 
 ## Notes & Recommendations
 
-### Build Order
-1. **Start with Shared Rust Crate** — Billing and File services depend on it
-2. **Parallelize service development**: Notification and Audit (Go) can be built simultaneously with Billing and File (Rust)
+### Build Order (Optimized for Parallelism)
+1. **Track A — Rust**: Start Shared Rust Crate (`libs/rust/`) first → then Billing + File services (Rust/Axum)
+2. **Track B — Go (can start immediately, no Rust dependency)**: Notification + Audit services (Go/Gin) use existing `libs/go/pkg/`
 3. **Integrate incrementally**: Add one service at a time to the gateway
 4. **Test continuously**: Run integration tests after each service addition
+5. **Track A and B are fully independent** — maximize parallelism
 
 ### Security Focus
 - **Notification Service**: SSRF prevention is critical — validate all webhook URLs
@@ -1403,7 +1405,7 @@ Extend tenant isolation test suite to Phase 2 services:
 ## Success Metrics
 
 Phase 2 is complete when:
-- ✅ All 8 services deployed and healthy
+- ✅ All 7 services deployed and healthy (Auth, Org, Gateway + Notification, Billing, File, Audit)
 - ✅ Module gating enforced by Gateway
 - ✅ Tenant isolation proven across all services
 - ✅ Security scans clean (SAST + DAST)

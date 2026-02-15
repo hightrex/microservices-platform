@@ -79,6 +79,89 @@ services:
       retries: 3
       start_period: 30s
 
+  notification-service:
+    build:
+      context: ../../
+      dockerfile: services/notification-service/Containerfile
+    container_name: platform-notification-service
+    restart: always
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      - SERVER_PORT=8082
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - DATABASE_HOST=platform-postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=notification_db
+      - DATABASE_SSL_MODE=disable
+      - REDIS_ADDRESS=platform-redis:6379
+      - REDIS_PASSWORD=devredispass
+      - REDIS_DB=2
+      - SMTP_HOST=localhost
+      - SMTP_PORT=1025
+      - SMTP_FROM_ADDRESS=noreply@example.com
+      - SMTP_FROM_NAME=Microservices Platform
+    depends_on:
+      - auth-service
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  audit-service:
+    build:
+      context: ../../
+      dockerfile: services/audit-service/Containerfile
+    container_name: platform-audit-service
+    restart: always
+    ports:
+      - "127.0.0.1:8085:8085"
+    environment:
+      - SERVER_PORT=8085
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - DATABASE_HOST=platform-postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=audit_db
+      - DATABASE_SSL_MODE=disable
+      - REDIS_ADDRESS=platform-redis:6379
+      - REDIS_PASSWORD=devredispass
+      - REDIS_DB=4
+      - COMPLIANCE_HASHCHAININGENABLED=true
+    depends_on:
+      - auth-service
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
 networks:
   app-net:
     external: true

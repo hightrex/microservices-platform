@@ -93,6 +93,93 @@ services:
       retries: 5
       start_period: 30s
 
+  notification-service:
+    build:
+      context: ../../
+      dockerfile: services/notification-service/Containerfile
+    container_name: platform-notification-service
+    restart: unless-stopped
+    # No external port — only reachable via gateway and internal network
+    expose:
+      - "8082"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    environment:
+      - SERVER_PORT=8082
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - DATABASE_HOST=platform-postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=notification_db
+      - DATABASE_SSL_MODE=disable
+      - REDIS_ADDRESS=platform-redis:6379
+      - REDIS_PASSWORD=devredispass
+      - REDIS_DB=2
+      - SMTP_HOST=localhost
+      - SMTP_PORT=1025
+      - SMTP_FROM_ADDRESS=noreply@example.com
+      - SMTP_FROM_NAME=Microservices Platform
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  audit-service:
+    build:
+      context: ../../
+      dockerfile: services/audit-service/Containerfile
+    container_name: platform-audit-service
+    restart: unless-stopped
+    # No external port — only reachable via gateway and internal network
+    expose:
+      - "8085"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    environment:
+      - SERVER_PORT=8085
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - DATABASE_HOST=platform-postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=audit_db
+      - DATABASE_SSL_MODE=disable
+      - REDIS_ADDRESS=platform-redis:6379
+      - REDIS_PASSWORD=devredispass
+      - REDIS_DB=4
+      - COMPLIANCE_HASHCHAININGENABLED=true
+    networks:
+      - app-net
+      - data-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   api-gateway:
     build:
       context: ../../
@@ -107,12 +194,18 @@ services:
         condition: service_healthy
       organization-service:
         condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      audit-service:
+        condition: service_healthy
     environment:
       - PORT=3000
       - NODE_ENV=development
       - LOG_LEVEL=debug
       - AUTH_BASE_URL=http://platform-auth-service:8080
       - ORG_BASE_URL=http://platform-organization-service:8081
+      - NOTIFICATION_BASE_URL=http://platform-notification-service:8082
+      - AUDIT_BASE_URL=http://platform-audit-service:8085
       - REDIS_URL=redis://platform-redis:6379
       - REDIS_PASSWORD=devredispass
       - REDIS_DB=2

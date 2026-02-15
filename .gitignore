@@ -44,3 +44,7 @@ tmp/
 
 # Testing
 tests/security/reports/
+scripts/security/kali/utils/__pycache__/
+
+# Database dumps
+postgres_dump_*

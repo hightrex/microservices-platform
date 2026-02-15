@@ -12,6 +12,8 @@ const configSchema = z.object({
   // Upstream service URLs (internal compose DNS names)
   authBaseUrl: z.string().url(),
   orgBaseUrl: z.string().url(),
+  notificationBaseUrl: z.string().url().optional(),
+  auditBaseUrl: z.string().url().optional(),
 
   // Redis
   redisUrl: z.string().default("redis://localhost:6379"),
@@ -54,6 +56,8 @@ function envToConfig(): Record<string, string | undefined> {
     logLevel: process.env["LOG_LEVEL"],
     authBaseUrl: process.env["AUTH_BASE_URL"],
     orgBaseUrl: process.env["ORG_BASE_URL"],
+    notificationBaseUrl: process.env["NOTIFICATION_BASE_URL"],
+    auditBaseUrl: process.env["AUDIT_BASE_URL"],
     redisUrl: process.env["REDIS_URL"],
     redisPassword: process.env["REDIS_PASSWORD"],
     redisDb: process.env["REDIS_DB"],

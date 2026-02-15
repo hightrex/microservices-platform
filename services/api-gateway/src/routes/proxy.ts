@@ -135,11 +135,13 @@ export function registerProxyRoutes(
     { prefix: "/api/v1/organizations", serviceName: "org-service", target: config.orgBaseUrl, requiresAuth: true, available: true },
     { prefix: "/api/v1/plans", serviceName: "org-service", target: config.orgBaseUrl, requiresAuth: true, available: true },
 
+    // Phase 2 routes — notification + audit (available when configured)
+    { prefix: "/api/v1/notifications", serviceName: "notification-service", target: config.notificationBaseUrl ?? "", requiresAuth: true, available: !!config.notificationBaseUrl },
+    { prefix: "/api/v1/audit", serviceName: "audit-service", target: config.auditBaseUrl ?? "", requiresAuth: true, available: !!config.auditBaseUrl },
+
     // Phase 2/3 placeholder routes — return 503
-    { prefix: "/api/v1/notifications", serviceName: "notification-service", target: "", requiresAuth: true, available: false },
     { prefix: "/api/v1/billing", serviceName: "billing-service", target: "", requiresAuth: true, available: false },
     { prefix: "/api/v1/files", serviceName: "file-service", target: "", requiresAuth: true, available: false },
-    { prefix: "/api/v1/audit", serviceName: "audit-service", target: "", requiresAuth: true, available: false },
     { prefix: "/api/v1/analytics", serviceName: "analytics-service", target: "", requiresAuth: true, available: false },
   ];
 

@@ -1,0 +1,47 @@
+# Build stage
+FROM docker.io/library/golang:1.25-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /build
+
+# Copy shared libs first for better caching
+COPY libs/go/ libs/go/
+
+# Copy service module files
+COPY services/audit-service/go.mod services/audit-service/go.sum services/audit-service/
+
+# Download dependencies
+WORKDIR /build/services/audit-service
+RUN go mod download
+
+# Copy service source
+WORKDIR /build
+COPY services/audit-service/ services/audit-service/
+
+# Build
+WORKDIR /build/services/audit-service
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /audit-service ./cmd/main.go
+
+# Runtime stage
+FROM docker.io/library/alpine:3.21.2
+
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -D -H -s /sbin/nologin appuser
+
+WORKDIR /app
+
+# Copy binary and migrations
+COPY --from=builder /audit-service .
+COPY services/audit-service/migrations/ migrations/
+COPY services/audit-service/config.yaml .
+
+# Use non-root user
+USER appuser
+
+EXPOSE 8085
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://localhost:8085/health || exit 1
+
+ENTRYPOINT ["./audit-service"]

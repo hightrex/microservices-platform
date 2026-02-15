@@ -1,0 +1,49 @@
+server_port: 8082
+environment: dev
+log_level: debug
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  name: notification_service
+  ssl_mode: disable
+  max_conns: 10
+  min_conns: 2
+
+redis:
+  address: localhost:6379
+  password: ""
+  db: 2
+
+tracing:
+  enabled: false
+  collector_endpoint: localhost:4317
+
+smtp:
+  host: localhost
+  port: 1025
+  username: ""
+  password: ""
+  from_address: noreply@example.com
+  from_name: Microservices Platform
+  use_tls: false
+
+twilio:
+  account_sid: ""
+  auth_token: ""
+  from_number: ""
+
+webhook:
+  timeout_seconds: 10
+  retry_attempts: 5
+  max_redirects: 3
+
+template:
+  default_language: en
+  supported_languages:
+    - en
+    - es
+    - fr
+    - de

@@ -4,10 +4,10 @@
 	infra-dev-up infra-dev-down infra-dev-restart \
 	infra-security-up infra-security-down infra-security-restart infra-security-logs \
 	services-up services-down services-restart services-status services-ps services-logs services-build services-rebuild services-clean services-pull \
-	services-up-auth services-up-org services-up-gateway \
+	services-up-auth services-up-org services-up-gateway services-up-notification services-up-audit \
 	core-up core-down core-logs core-status core-build core-rebuild core-reset \
 	stack-up stack-down stack-restart stack-status stack-logs stack-build stack-rebuild stack-clean stack-reset \
-	init-db setup test test-ts test-gateway test-tenant-isolation lint \
+	init-db setup test test-ts test-gateway test-go test-notification test-audit test-tenant-isolation lint \
 	security-sast security-trivy security-dast security-all security-up security-down \
 	all
 
@@ -54,6 +54,8 @@ help:
 	@echo "  make services-pull          Pull referenced images (if any)"
 	@echo "  make services-up-auth       Start only Auth Service"
 	@echo "  make services-up-org        Start only Organization Service"
+	@echo "  make services-up-notification  Start only Notification Service"
+	@echo "  make services-up-audit      Start only Audit Service"
 	@echo "  make services-up-gateway    Start only API Gateway"
 	@echo ""
 	@echo "Core stack (infra + auth + org + gateway):"
@@ -79,7 +81,10 @@ help:
 	@echo "Dev workflow:"
 	@echo "  make setup                  Run dev setup script"
 	@echo "  make init-db                Initialize databases"
-	@echo "  make test                   Run Go tests"
+	@echo "  make test                   Run all tests (Go + TypeScript)"
+	@echo "  make test-go                Run all Go tests"
+	@echo "  make test-notification      Run Notification Service tests"
+	@echo "  make test-audit             Run Audit Service tests"
 	@echo "  make lint                   Run golangci-lint"
 	@echo ""
 	@echo "Security scans:"
@@ -203,6 +208,14 @@ services-up-auth:
 services-up-org:
 	@echo "==> Starting Organization Service..."
 	podman compose -f $(SERVICES_COMPOSE) up -d organization-service
+
+services-up-notification:
+	@echo "==> Starting Notification Service..."
+	podman compose -f $(SERVICES_COMPOSE) up -d notification-service
+
+services-up-audit:
+	@echo "==> Starting Audit Service..."
+	podman compose -f $(SERVICES_COMPOSE) up -d audit-service
 
 services-up-gateway:
 	@echo "==> Starting API Gateway..."
@@ -375,10 +388,35 @@ test:
 	cd services/auth-service && go test -v ./...
 	@echo "--- organization-service ---"
 	cd services/organization-service && go test -v ./...
+	@echo "--- notification-service ---"
+	cd services/notification-service && go test -v ./...
+	@echo "--- audit-service ---"
+	cd services/audit-service && go test -v ./...
 	@echo "--- libs/typescript ---"
 	cd libs/typescript && npm test
 	@echo "--- api-gateway ---"
 	cd services/api-gateway && npm test
+
+test-go:
+	@echo "==> Running all Go tests..."
+	@echo "--- libs/go ---"
+	cd libs/go && go test -v ./...
+	@echo "--- auth-service ---"
+	cd services/auth-service && go test -v ./...
+	@echo "--- organization-service ---"
+	cd services/organization-service && go test -v ./...
+	@echo "--- notification-service ---"
+	cd services/notification-service && go test -v ./...
+	@echo "--- audit-service ---"
+	cd services/audit-service && go test -v ./...
+
+test-notification:
+	@echo "==> Running Notification Service tests..."
+	cd services/notification-service && go test -v ./...
+
+test-audit:
+	@echo "==> Running Audit Service tests..."
+	cd services/audit-service && go test -v ./...
 
 test-ts:
 	@echo "==> Running TypeScript tests..."
@@ -403,6 +441,10 @@ lint:
 	cd services/auth-service && golangci-lint run
 	@echo "--- organization-service ---"
 	cd services/organization-service && golangci-lint run
+	@echo "--- notification-service ---"
+	cd services/notification-service && golangci-lint run
+	@echo "--- audit-service ---"
+	cd services/audit-service && golangci-lint run
 	@echo "--- libs/typescript ---"
 	cd libs/typescript && npx tsc --noEmit
 	@echo "--- api-gateway ---"

@@ -1,0 +1,35 @@
+server_port: 8085
+environment: dev
+log_level: debug
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  name: audit_service
+  ssl_mode: disable
+  max_conns: 10
+  min_conns: 2
+
+redis:
+  address: localhost:6379
+  password: ""
+  db: 4
+
+tracing:
+  enabled: false
+  collector_endpoint: localhost:4317
+
+retention:
+  default_days: 90
+  security_events_days: 365
+
+export:
+  max_export_size_mb: 100
+  allowed_formats:
+    - csv
+    - json
+
+compliance:
+  hash_chaining_enabled: true
