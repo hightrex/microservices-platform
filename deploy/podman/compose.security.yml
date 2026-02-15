@@ -44,9 +44,10 @@ services:
       context: ../../scripts/security
       dockerfile: docker/Dockerfile.kali-automated
     container_name: platform-kali
-    tty: true
-    stdin_open: true
-    command: ["/pentest/automated-scan.sh"]
+    # Keep container alive for interactive / manual pentest sessions.
+    # The automated pipeline (run-automated-pentest.sh) uses podman run + exec
+    # with its own container lifecycle.
+    command: ["sleep", "infinity"]
     networks:
       - security-net
       - app-net

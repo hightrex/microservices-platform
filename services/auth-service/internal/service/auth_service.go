@@ -121,10 +121,11 @@ func (s *AuthService) Register(ctx context.Context, req models.CreateUserRequest
 		Resource: "auth/register",
 	})
 
-	// Publish event
+	// Publish event with source metadata to distinguish registration from admin-created users
 	if err := s.events.Publish(ctx, authEventsStream, "user.created", map[string]interface{}{
 		"user_id": user.ID.String(),
 		"email":   user.Email,
+		"source":  "registration",
 	}); err != nil {
 		logger.Warn().Err(err).Msg("Failed to publish user.created event")
 	}

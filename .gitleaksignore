@@ -1,0 +1,2 @@
+0fc10bacfdca3fa1d7b4c5bda795b2747a0be9ff:tests/security/fuzzing/jwt_fuzz_test.go:jwt:44
+0fc10bacfdca3fa1d7b4c5bda795b2747a0be9ff:scripts/05-auth-tests.sh:generic-api-key:50

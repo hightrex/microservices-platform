@@ -1415,3 +1415,35 @@ Phase 2 is complete when:
 **Estimated timeline**: 8 weeks (parallel development reduces time vs sequential)
 
 Ready to proceed to Phase 3: Analytics, Frontend, and Production Hardening! 🚀
+
+## 2.8 Service Integration & Event Consumers
+
+> **Status**: 🟡 PARTIALLY COMPLETE (Phase 1 consumer done, Phase 2 consumers pending)
+> **Goal**: Implement missing event consumers and verify cross-service workflows.
+
+### 2.8.1 Organization Service Consumers (Go) — ✅ COMPLETED (Phase 1)
+- [x] `internal/consumer/consumer.go` — Consumer manager with event type routing
+- [x] `internal/consumer/user_consumer.go` — Handles user.created events
+  - [x] Implement `HandleUserCreated` handler
+  - [x] Logic: Check if user is first in tenant → Create default organization (idempotent)
+  - [x] Logic: Publish org.created event after creation
+  - [x] DLQ support, pending recovery, metrics, health check
+- [ ] Logic: Send welcome email (via Notification Service, once integrated — Phase 2)
+
+### 2.8.2 Auth Service Consumers (Go) — Pending (Phase 2)
+- [ ] `internal/service/event_consumer.go`
+  - [ ] Implement `ConsumeOrgDeleted` handler
+  - [ ] Logic: Deactivate all users in deleted organization (or reassign)
+
+### 2.8.3 End-to-End Integration Testing
+- [x] **Workflow 1: User Registration** — ✅ VERIFIED
+  - [x] Trigger: `POST /api/v1/auth/register`
+  - [x] Verify: `user.created` event published to Redis `auth-events` stream
+  - [x] Verify: Org Service consumes event → Creates Organization automatically
+  - [x] Verify: `org.created` event published to `org-events` stream
+  - [x] Verify: Consumer health check reports UP
+  - [x] Verify: Consumer metrics visible in Prometheus
+- [ ] **Workflow 2: Subscription Change** — Pending (requires Billing Service)
+  - [ ] Trigger: Billing Service update
+  - [ ] Verify: `subscription.updated` event published
+  - [ ] Verify: Org Service consumes → Updates module access

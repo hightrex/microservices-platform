@@ -22,6 +22,7 @@ import (
 
 	"github.com/hightrex/microservices-platform/services/organization-service/api"
 	"github.com/hightrex/microservices-platform/services/organization-service/internal/config"
+	"github.com/hightrex/microservices-platform/services/organization-service/internal/consumer"
 	"github.com/hightrex/microservices-platform/services/organization-service/internal/handlers"
 	"github.com/hightrex/microservices-platform/services/organization-service/internal/repository/postgres"
 	redisrepo "github.com/hightrex/microservices-platform/services/organization-service/internal/repository/redis"
@@ -84,7 +85,10 @@ func main() {
 	moduleCache := redisrepo.NewModuleCache(redisClient)
 
 	// 8. Event publisher (Redis Streams)
-	eventPublisher := messaging.NewProducer(getRedisClient(cfg.Redis))
+	// Messaging uses Redis DB 0 (shared bus across all services), while cache may use a different DB.
+	messagingRedis := getMessagingRedisClient(cfg.Redis)
+	defer messagingRedis.Close()
+	eventPublisher := messaging.NewProducer(messagingRedis, "organization-service")
 
 	// 9. Wire services
 	orgSvc := service.NewOrgService(orgRepo, moduleRepo, planRepo, memberRepo, moduleCache, eventPublisher)
@@ -104,12 +108,31 @@ func main() {
 	healthManager := health.NewManager()
 	healthManager.AddCheck(handlers.NewPostgresCheck(pool))
 	healthManager.AddCheck(handlers.NewRedisCheck(redisClient))
+	// Consumer check added after initialization below
 
 	// 12. Setup router and register routes
 	r := gin.New()
 	api.RegisterRoutes(r, orgHandler, moduleHandler, memberHandler, planHandler, deptHandler, healthManager)
 
-	// 13. Start server with graceful shutdown
+	// 13. Initialize and start event consumer
+	// Consumer also uses the shared messaging Redis (DB 0) to read events from auth-service
+	userConsumer := consumer.NewUserConsumer(orgSvc)
+	consumerManager := consumer.NewConsumer(messagingRedis, consumer.Config{
+		GroupName:    "org-service-consumer-group",
+		ConsumerName: fmt.Sprintf("org-service-%s", os.Getenv("HOSTNAME")),
+		Concurrency:  1,
+	})
+	healthManager.AddCheck(consumerManager)
+
+	// Register handlers: subscribe to auth-events stream, route user.created events
+	consumerManager.RegisterHandler("auth-events", "user.created", userConsumer.HandleUserCreated)
+
+	// Start consumer (launches background goroutines with context cancellation)
+	if err := consumerManager.Start(ctx); err != nil {
+		logger.Error().Err(err).Msg("Failed to start event consumer")
+	}
+
+	// 14. Start server with graceful shutdown
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.ServerPort),
 		Handler:           r,
@@ -132,6 +155,9 @@ func main() {
 	<-quit
 	logger.Info().Msg("Shutting down server...")
 
+	// Stop consumer
+	consumerManager.Stop()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -146,5 +172,16 @@ func getRedisClient(cfg cache.Config) *redis.Client {
 		Addr:     cfg.Address,
 		Password: cfg.Password,
 		DB:       cfg.DB,
+	})
+}
+
+// getMessagingRedisClient returns a Redis client for the shared messaging bus (always DB 0).
+// Events are published and consumed across services on the same Redis DB regardless of
+// per-service cache DB settings.
+func getMessagingRedisClient(cfg cache.Config) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr:     cfg.Address,
+		Password: cfg.Password,
+		DB:       0, // Shared messaging bus — all services use DB 0 for Redis Streams
 	})
 }

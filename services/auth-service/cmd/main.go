@@ -85,7 +85,7 @@ func main() {
 
 	// 8. Event publisher (Redis Streams)
 	// Access underlying redis client for messaging producer
-	eventPublisher := messaging.NewProducer(getRedisClient(cfg.Redis))
+	eventPublisher := messaging.NewProducer(getRedisClient(cfg.Redis), "auth-service")
 
 	// 9. Wire services (accept interfaces)
 	tokenSvc := service.NewTokenService(cfg.JWT)

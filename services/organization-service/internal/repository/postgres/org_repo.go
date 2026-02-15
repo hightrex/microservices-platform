@@ -247,3 +247,17 @@ func (r *OrgRepo) GetByIDUnscoped(ctx context.Context, id uuid.UUID) (*models.Or
 	}
 	return &org, nil
 }
+
+// CountByOwnerID counts organizations owned by a specific user.
+// This is used to enforce the one-org-per-user rule during registration.
+func (r *OrgRepo) CountByOwnerID(ctx context.Context, ownerID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRow(ctx,
+		"SELECT COUNT(*) FROM organizations WHERE owner_user_id = $1 AND status != 'deleted'",
+		ownerID,
+	).Scan(&count)
+	if err != nil {
+		return 0, errors.InternalServerError("Failed to count organizations by owner", err)
+	}
+	return count, nil
+}

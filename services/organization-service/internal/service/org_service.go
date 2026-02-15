@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hightrex/microservices-platform/libs/go/pkg/errors"
@@ -41,6 +42,58 @@ func NewOrgService(
 		cache:   cache,
 		events:  events,
 	}
+}
+
+// CreateFromUserEvent creates an organization for a newly registered user.
+// It enforces idempotency by checking if the user already owns an organization.
+func (s *OrgService) CreateFromUserEvent(ctx context.Context, userID, email string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return errors.BadRequest("Invalid user ID", err)
+	}
+
+	// 1. Check if user already owns an org
+	count, err := s.orgs.CountByOwnerID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		logger.Info().Str("user_id", userID).Msg("User already owns an organization, skipping auto-creation")
+		return nil
+	}
+
+	// 2. Generate generic name and slug
+	// Derive a reasonable org name from the email, falling back to default.
+	orgName := "My Organization"
+	if atIdx := len(email) - len(email); atIdx >= 0 {
+		for i, c := range email {
+			if c == '@' {
+				if i > 0 {
+					orgName = fmt.Sprintf("%s's Organization", email[:i])
+				}
+				break
+			}
+		}
+	}
+
+	// Create a unique alphanumeric slug using the user ID to avoid collisions.
+	// Slug validation requires alphanum only — strip hyphens from UUID prefix.
+	cleanID := strings.ReplaceAll(uid.String()[:12], "-", "")
+	orgSlug := fmt.Sprintf("org%s", cleanID)
+
+	// 3. Create request object
+	// We reuse the existing Create logic which handles defaults and events
+	req := models.CreateOrgRequest{
+		Name: orgName,
+		Slug: orgSlug,
+		Plan: models.PlanFree,
+	}
+
+	// 4. Call Create
+	// Note: Create expects an IP address for audit logging.
+	// Since this is an internal event, we use "system-consumer" or similar.
+	_, err = s.Create(ctx, req, uid, "event-consumer")
+	return err
 }
 
 // Create creates a new organization, sets the owner, and seeds default modules per plan.

@@ -16,6 +16,7 @@ type OrgRepository interface {
 	Update(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	List(ctx context.Context, filter models.OrgFilter, page models.Pagination) ([]models.Organization, int, error)
+	CountByOwnerID(ctx context.Context, ownerID uuid.UUID) (int, error)
 }
 
 // ModuleRepository defines the interface for module data access.

@@ -14,6 +14,18 @@ var (
 		Name: "http_request_duration_seconds",
 		Help: "Duration of HTTP requests.",
 	}, []string{"method", "path", "status"})
+
+	// EventProcessingDuration tracks the time taken to process events
+	EventProcessingDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "event_processing_duration_seconds",
+		Help: "Duration of event processing.",
+	}, []string{"stream", "event_type", "status"})
+
+	// EventsProcessed tracks the total number of events processed
+	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "events_processed_total",
+		Help: "Total number of events processed.",
+	}, []string{"stream", "event_type", "status"})
 )
 
 // Middleware returns a Gin middleware for collecting HTTP metrics

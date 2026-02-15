@@ -14,13 +14,14 @@ var _ = fmt.Sprintf
 // --- Mock OrgRepository ---
 
 type mockOrgRepo struct {
-	createFn         func(ctx context.Context, org *models.Organization) error
-	getByIDFn        func(ctx context.Context, id uuid.UUID) (*models.Organization, error)
+	createFn          func(ctx context.Context, org *models.Organization) error
+	getByIDFn         func(ctx context.Context, id uuid.UUID) (*models.Organization, error)
 	getByIDUnscopedFn func(ctx context.Context, id uuid.UUID) (*models.Organization, error)
-	getBySlugFn      func(ctx context.Context, slug string) (*models.Organization, error)
-	updateFn         func(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error
-	deleteFn         func(ctx context.Context, id uuid.UUID) error
-	listFn           func(ctx context.Context, filter models.OrgFilter, page models.Pagination) ([]models.Organization, int, error)
+	getBySlugFn       func(ctx context.Context, slug string) (*models.Organization, error)
+	updateFn          func(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error
+	deleteFn          func(ctx context.Context, id uuid.UUID) error
+	listFn            func(ctx context.Context, filter models.OrgFilter, page models.Pagination) ([]models.Organization, int, error)
+	countByOwnerIDFn  func(ctx context.Context, ownerID uuid.UUID) (int, error)
 }
 
 func (m *mockOrgRepo) Create(ctx context.Context, org *models.Organization) error {
@@ -73,14 +74,21 @@ func (m *mockOrgRepo) List(ctx context.Context, filter models.OrgFilter, page mo
 	return nil, 0, nil
 }
 
+func (m *mockOrgRepo) CountByOwnerID(ctx context.Context, ownerID uuid.UUID) (int, error) {
+	if m.countByOwnerIDFn != nil {
+		return m.countByOwnerIDFn(ctx, ownerID)
+	}
+	return 0, nil
+}
+
 // --- Mock ModuleRepository ---
 
 type mockModuleRepo struct {
-	getByOrgFn        func(ctx context.Context, orgID uuid.UUID) ([]models.Module, error)
+	getByOrgFn         func(ctx context.Context, orgID uuid.UUID) ([]models.Module, error)
 	getByOrgUnscopedFn func(ctx context.Context, orgID uuid.UUID) ([]models.Module, error)
-	toggleFn          func(ctx context.Context, orgID uuid.UUID, moduleName string, enabled bool) error
-	getConfigFn       func(ctx context.Context, orgID uuid.UUID, moduleName string) (*models.Module, error)
-	updateConfigFn    func(ctx context.Context, orgID uuid.UUID, moduleName string, config []byte) error
+	toggleFn           func(ctx context.Context, orgID uuid.UUID, moduleName string, enabled bool) error
+	getConfigFn        func(ctx context.Context, orgID uuid.UUID, moduleName string) (*models.Module, error)
+	updateConfigFn     func(ctx context.Context, orgID uuid.UUID, moduleName string, config []byte) error
 }
 
 func (m *mockModuleRepo) GetByOrg(ctx context.Context, orgID uuid.UUID) ([]models.Module, error) {
@@ -240,9 +248,9 @@ func (m *mockDeptRepo) GetByID(ctx context.Context, orgID, deptID uuid.UUID) (*m
 // --- Mock ModuleCache ---
 
 type mockModuleCache struct {
-	getModulesFn  func(ctx context.Context, orgID uuid.UUID) ([]models.ModuleResponse, error)
-	setModulesFn  func(ctx context.Context, orgID uuid.UUID, modules []models.ModuleResponse) error
-	invalidateFn  func(ctx context.Context, orgID uuid.UUID) error
+	getModulesFn func(ctx context.Context, orgID uuid.UUID) ([]models.ModuleResponse, error)
+	setModulesFn func(ctx context.Context, orgID uuid.UUID, modules []models.ModuleResponse) error
+	invalidateFn func(ctx context.Context, orgID uuid.UUID) error
 }
 
 func (m *mockModuleCache) GetModules(ctx context.Context, orgID uuid.UUID) ([]models.ModuleResponse, error) {

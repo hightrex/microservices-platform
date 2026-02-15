@@ -1,8 +1,9 @@
 # scripts/security/docker/Dockerfile.kali-automated
-FROM kalilinux/kali-rolling:latest
+# NOTE: kali-rolling is a rolling release; pinning to a quarterly tag.
+FROM docker.io/kalilinux/kali-rolling:2025.1c
 
 # Install required tools
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     # Reconnaissance
     nmap \
     masscan \
@@ -34,7 +35,6 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies for reporting
-# Install Python dependencies for reporting
 RUN pip3 install --no-cache-dir --break-system-packages \
     requests \
     jinja2 \
@@ -43,9 +43,8 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     tabulate \
     colorama
 
-
 # Install additional tools from GitHub
-RUN git clone https://github.com/projectdiscovery/nuclei-templates.git /opt/nuclei-templates
+RUN git clone --depth 1 https://github.com/projectdiscovery/nuclei-templates.git /opt/nuclei-templates
 
 # Create working directories
 RUN mkdir -p /pentest/{config,modules,reports,results,utils}
@@ -55,9 +54,10 @@ WORKDIR /pentest
 # Copy automation scripts
 COPY kali/ /pentest/
 
-# Make scripts executable
-RUN chmod +x /pentest/automated-scan.sh && \
-    chmod +x /pentest/modules/*.sh
+# Make all scripts and utilities executable
+RUN chmod +x /pentest/automated-scan.sh \
+    && chmod +x /pentest/modules/*.sh \
+    && chmod +x /pentest/utils/*.sh 2>/dev/null || true
 
-# Default command
-CMD ["/pentest/automated-scan.sh"]
+# Default: keep container alive so exec can drive it
+CMD ["sleep", "infinity"]
