@@ -96,7 +96,7 @@ mod tests {
             email: "not-an-email".to_string(),
         };
         let err = validate_request(&req).unwrap_err();
-        assert_eq!(err.code, "VALIDATION_ERROR");
+        assert_eq!(err.code, "VALIDATION_FAILED");
         assert!(err.details.is_some());
     }
 }

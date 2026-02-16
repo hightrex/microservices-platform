@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import type Redis from "ioredis";
-import { ERROR_CODES } from "@microservices-platform/shared";
+import { ERROR_CODES, logger } from "@microservices-platform/shared";
 import type { GatewayConfig } from "../config";
 
 /** Per-endpoint rate limit overrides. */
@@ -68,10 +68,17 @@ export function rateLimiterMiddleware(config: GatewayConfig, redis: Redis) {
       }
 
       next();
-    } catch {
-      // Fail open on Redis errors — log and continue
-      // In production this could be changed to fail closed
-      next();
+    } catch (err) {
+      // Fail closed on Redis errors per foundation rules: "Fail closed, not open"
+      logger.error({ err }, "Rate limiter Redis error — rejecting request (fail closed)");
+      res.status(503).json({
+        success: false,
+        error: {
+          code: ERROR_CODES.SERVICE_UNAVAILABLE,
+          message: "Service temporarily unavailable",
+        },
+      });
+      return;
     }
   };
 }

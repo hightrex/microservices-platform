@@ -59,16 +59,20 @@ pub async fn create_file_record(
 
     if !has_quota {
         // Publish quota exceeded event
-        let _ = producer
+        if let Err(e) = producer
             .publish(
                 streams::FILE_EVENTS,
                 event_types::QUOTA_EXCEEDED,
                 tenant_ctx.tenant_id,
                 serde_json::json!({
+                    "user_id": metadata.user_id,
                     "attempted_bytes": metadata.size_bytes,
                 }),
             )
-            .await;
+            .await
+        {
+            tracing::error!(error = %e, tenant_id = %tenant_ctx.tenant_id, "Failed to publish quota.exceeded event");
+        }
         return Err(AppError::bad_request("Storage quota exceeded"));
     }
 
@@ -100,22 +104,34 @@ pub async fn create_file_record(
     let created = file_repo::create(pool, &file).await?;
 
     // Increment quota usage
-    let _ = quota_repo::increment_usage(pool, tenant_ctx.tenant_id, metadata.size_bytes).await;
+    if let Err(e) = quota_repo::increment_usage(pool, tenant_ctx.tenant_id, metadata.size_bytes).await {
+        tracing::error!(
+            error = %e,
+            tenant_id = %tenant_ctx.tenant_id,
+            file_id = %created.id,
+            size_bytes = metadata.size_bytes,
+            "Failed to increment quota usage — quota tracking may be inaccurate"
+        );
+    }
 
     // Publish event
-    let _ = producer
+    if let Err(e) = producer
         .publish(
             streams::FILE_EVENTS,
             event_types::FILE_UPLOADED,
             tenant_ctx.tenant_id,
             serde_json::json!({
                 "file_id": created.id,
+                "user_id": created.user_id,
                 "filename": created.filename,
                 "size_bytes": created.size_bytes,
                 "content_type": created.content_type,
             }),
         )
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, file_id = %created.id, "Failed to publish file.uploaded event");
+    }
 
     tracing::info!(
         file_id = %created.id,
@@ -166,20 +182,32 @@ pub async fn delete_file(
     let deleted = file_repo::soft_delete(pool, file_id, tenant_ctx.tenant_id).await?;
 
     // Decrement quota
-    let _ = quota_repo::decrement_usage(pool, tenant_ctx.tenant_id, file.size_bytes).await;
+    if let Err(e) = quota_repo::decrement_usage(pool, tenant_ctx.tenant_id, file.size_bytes).await {
+        tracing::error!(
+            error = %e,
+            tenant_id = %tenant_ctx.tenant_id,
+            file_id = %file_id,
+            size_bytes = file.size_bytes,
+            "Failed to decrement quota usage — quota tracking may be inaccurate"
+        );
+    }
 
     // Publish event
-    let _ = producer
+    if let Err(e) = producer
         .publish(
             streams::FILE_EVENTS,
             event_types::FILE_DELETED,
             tenant_ctx.tenant_id,
             serde_json::json!({
                 "file_id": file_id,
+                "user_id": file.user_id,
                 "size_bytes": file.size_bytes,
             }),
         )
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, file_id = %file_id, "Failed to publish file.deleted event");
+    }
 
     Ok(deleted)
 }

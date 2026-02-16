@@ -63,6 +63,10 @@ async fn main() -> anyhow::Result<()> {
     // Set up metrics
     let metrics_registry = metrics::MetricsRegistry::new("billing");
 
+    // Build auth configuration for JWT validation
+    let auth_config =
+        platform_middleware::auth::AuthConfig::new(&cfg.auth.jwt_secret);
+
     // Build application state
     let app_state = routes::AppState {
         db_pool: db_pool.clone(),
@@ -71,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
         metrics_registry: metrics_registry.clone(),
         stripe_config: cfg.stripe.clone(),
         invoice_config: cfg.invoice.clone(),
+        auth_config,
     };
 
     // Build router

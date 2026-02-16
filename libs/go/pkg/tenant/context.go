@@ -9,7 +9,8 @@ import (
 type contextKey string
 
 const (
-	tenantIDKey contextKey = "tenant_id"
+	tenantIDKey      contextKey = "tenant_id"
+	correlationIDKey contextKey = "correlation_id"
 )
 
 // FromContext extracts the tenant ID from the context.
@@ -30,4 +31,19 @@ func NewContext(ctx context.Context, tenantID uuid.UUID) context.Context {
 // IsSet checks if a valid tenant ID exists in the context.
 func IsSet(ctx context.Context) bool {
 	return FromContext(ctx) != uuid.Nil
+}
+
+// CorrelationIDFromContext extracts the correlation ID from the context.
+// Returns an empty string if not found.
+func CorrelationIDFromContext(ctx context.Context) string {
+	id, ok := ctx.Value(correlationIDKey).(string)
+	if !ok {
+		return ""
+	}
+	return id
+}
+
+// NewContextWithCorrelationID returns a new context with the given correlation ID.
+func NewContextWithCorrelationID(ctx context.Context, correlationID string) context.Context {
+	return context.WithValue(ctx, correlationIDKey, correlationID)
 }

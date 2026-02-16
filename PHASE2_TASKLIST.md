@@ -1,11 +1,11 @@
 # Phase 2: Modular Services (Weeks 11–18)
 
-> **Status**: 🟡 IN PROGRESS — Track B complete (Notification + Audit), Track A pending (Rust crate + Billing + File)
+> **Status**: 🟡 IN PROGRESS — Track A & B code complete (All services implemented), Integration done, Security pending
 > **Prerequisite**: Phase 1 complete (`m1-core-platform-ready`)
 > **Milestone**: M2 — All 7 services running, module gating working, full event-driven architecture
 > **Dependency order**: Shared Rust Crate → (Billing + File in parallel) | (Notification + Audit in parallel, no Rust dependency) → Integration
-> **Completed**: 2.2 Notification Service ✅ | 2.5 Audit Service ✅ | 2.6 Integration (partial — Track B services) ✅
-> **Remaining**: 2.1 Shared Rust Crate | 2.3 Billing Service | 2.4 File Service | 2.6 Full Integration | 2.7 Security
+> **Completed**: 2.1 Shared Rust Crate ✅ | 2.2 Notification Service ✅ | 2.3 Billing Service ✅ | 2.4 File Service ✅ | 2.5 Audit Service ✅ | 2.6 Integration ✅
+> **Remaining**: 2.7 Phase 2 Security
 
 ---
 
@@ -14,124 +14,124 @@
 The Rust shared library provides common functionality for Billing and File services. **Build first** — the Rust services depend on it.
 
 ### 2.1.1 Workspace Setup
-- [ ] Create `libs/rust/Cargo.toml` — Cargo workspace definition
-- [ ] Create workspace members:
-  - [ ] `libs/rust/common/` — core utilities
-  - [ ] `libs/rust/messaging/` — Redis Streams integration
-  - [ ] `libs/rust/database/` — Postgres connection pooling
-  - [ ] `libs/rust/middleware/` — Axum middleware
-- [ ] Set edition = "2021" and consistent dependency versions across workspace
-- [ ] Add shared dependencies in workspace `Cargo.toml`:
-  - [ ] `tokio`, `serde`, `serde_json`, `anyhow`, `thiserror`
-  - [ ] `tracing`, `tracing-subscriber`
-  - [ ] `uuid`, `chrono`
-- [ ] Verify `cargo build --workspace` compiles
+- [x] Create `libs/rust/Cargo.toml` — Cargo workspace definition
+- [x] Create workspace members:
+  - [x] `libs/rust/common/` — core utilities
+  - [x] `libs/rust/messaging/` — Redis Streams integration
+  - [x] `libs/rust/database/` — Postgres connection pooling
+  - [x] `libs/rust/middleware/` — Axum middleware
+- [x] Set edition = "2021" and consistent dependency versions across workspace
+- [x] Add shared dependencies in workspace `Cargo.toml`:
+  - [x] `tokio`, `serde`, `serde_json`, `anyhow`, `thiserror`
+  - [x] `tracing`, `tracing-subscriber`
+  - [x] `uuid`, `chrono`
+- [x] Verify `cargo build --workspace` compiles
 
 ### 2.1.2 Common Crate (`libs/rust/common/`)
-- [ ] `src/config.rs` — configuration loading (environment variables, TOML)
-  - [ ] `DatabaseConfig` struct (host, port, database, user, password, pool size)
-  - [ ] `RedisConfig` struct (host, port, password, db)
-  - [ ] `ServerConfig` struct (host, port, cors_origins)
-  - [ ] `load_config()` function with validation
-- [ ] `src/error.rs` — standardized error types
-  - [ ] `AppError` enum (NotFound, Unauthorized, Forbidden, ValidationError, DatabaseError, ExternalError, InternalError)
-  - [ ] Implement `std::fmt::Display` and `std::error::Error`
-  - [ ] Conversion to Axum responses (status codes + JSON body)
-  - [ ] Error code constants matching Go shared lib
-- [ ] `src/logger.rs` — structured logging setup
-  - [ ] Initialize `tracing_subscriber` with JSON formatter
-  - [ ] Log level from environment variable
-  - [ ] Add request ID to context
-- [ ] `src/tenant.rs` — tenant context extraction
-  - [ ] `TenantContext` struct with `tenant_id` and `org_id`
-  - [ ] Extract from Axum headers (`X-Tenant-ID`, `X-Org-ID`)
-  - [ ] `require_tenant()` helper that returns error if missing
-- [ ] `src/validation.rs` — input validation
-  - [ ] Integration with `validator` crate
-  - [ ] `validate_request()` generic function
-  - [ ] Validation error formatting to match standardized API error format
-- [ ] Unit tests for each module
+- [x] `src/config.rs` — configuration loading (environment variables, TOML)
+  - [x] `DatabaseConfig` struct (host, port, database, user, password, pool size)
+  - [x] `RedisConfig` struct (host, port, password, db)
+  - [x] `ServerConfig` struct (host, port, cors_origins)
+  - [x] `load_config()` function with validation
+- [x] `src/error.rs` — standardized error types
+  - [x] `AppError` enum (NotFound, Unauthorized, Forbidden, ValidationError, DatabaseError, ExternalError, InternalError)
+  - [x] Implement `std::fmt::Display` and `std::error::Error`
+  - [x] Conversion to Axum responses (status codes + JSON body)
+  - [x] Error code constants matching Go shared lib
+- [x] `src/logger.rs` — structured logging setup
+  - [x] Initialize `tracing_subscriber` with JSON formatter
+  - [x] Log level from environment variable
+  - [x] Add request ID to context
+- [x] `src/tenant.rs` — tenant context extraction
+  - [x] `TenantContext` struct with `tenant_id` and `org_id`
+  - [x] Extract from Axum headers (`X-Tenant-ID`, `X-Org-ID`)
+  - [x] `require_tenant()` helper that returns error if missing
+- [x] `src/validation.rs` — input validation
+  - [x] Integration with `validator` crate
+  - [x] `validate_request()` generic function
+  - [x] Validation error formatting to match standardized API error format
+- [x] Unit tests for each module
 
 ### 2.1.3 Database Crate (`libs/rust/database/`)
-- [ ] `src/pool.rs` — Postgres connection pooling
-  - [ ] Use `sqlx::PgPool` with configuration from `common::config`
-  - [ ] Connection health checks
-  - [ ] Connection lifecycle management
-- [ ] `src/migrations.rs` — migration runner
-  - [ ] Use `sqlx::migrate!()` macro
-  - [ ] `run_migrations()` function
-- [ ] `src/repository.rs` — base repository traits
-  - [ ] `TenantScoped` trait for tenant isolation
-  - [ ] Query builder helpers
-- [ ] Unit tests with test containers
+- [x] `src/pool.rs` — Postgres connection pooling
+  - [x] Use `sqlx::PgPool` with configuration from `common::config`
+  - [x] Connection health checks
+  - [x] Connection lifecycle management
+- [x] `src/migrations.rs` — migration runner
+  - [x] Use `sqlx::migrate!()` macro
+  - [x] `run_migrations()` function
+- [x] `src/repository.rs` — base repository traits
+  - [x] `TenantScoped` trait for tenant isolation
+  - [x] Query builder helpers
+- [x] Unit tests with test containers
 
 ### 2.1.4 Messaging Crate (`libs/rust/messaging/`)
-- [ ] `src/producer.rs` — Redis Streams producer
-  - [ ] `Producer` struct with Redis connection
-  - [ ] `publish()` method with event schema validation
-  - [ ] Automatic timestamp and correlation ID injection
-- [ ] `src/consumer.rs` — Redis Streams consumer
-  - [ ] `Consumer` struct with consumer group support
-  - [ ] `subscribe()` method with message acknowledgment
-  - [ ] Dead letter queue (DLQ) support
-  - [ ] Retry logic with exponential backoff
-- [ ] `src/schema.rs` — event schema definitions
-  - [ ] Common event structure (event_type, tenant_id, timestamp, data)
-  - [ ] Serialization/deserialization with `serde`
-- [ ] Integration tests against real Redis
+- [x] `src/producer.rs` — Redis Streams producer
+  - [x] `Producer` struct with Redis connection
+  - [x] `publish()` method with event schema validation
+  - [x] Automatic timestamp and correlation ID injection
+- [x] `src/consumer.rs` — Redis Streams consumer
+  - [x] `Consumer` struct with consumer group support
+  - [x] `subscribe()` method with message acknowledgment
+  - [x] Dead letter queue (DLQ) support
+  - [x] Retry logic with exponential backoff
+- [x] `src/schema.rs` — event schema definitions
+  - [x] Common event structure (event_type, tenant_id, timestamp, data)
+  - [x] Serialization/deserialization with `serde`
+- [x] Integration tests against real Redis
 
 ### 2.1.5 Middleware Crate (`libs/rust/middleware/`)
-- [ ] `src/auth.rs` — JWT validation middleware
-  - [ ] Extract and validate JWT from `Authorization` header
-  - [ ] Parse claims (sub, tid, org, roles, exp)
-  - [ ] Add user context to Axum extensions
-  - [ ] Token blacklist check (Redis)
-- [ ] `src/tenant.rs` — tenant extraction middleware
-  - [ ] Extract `X-Tenant-ID` header
-  - [ ] Validate against JWT claims
-  - [ ] Add to request extensions
-- [ ] `src/logging.rs` — request logging middleware
-  - [ ] Log request method, path, status, duration
-  - [ ] Include request ID, tenant ID, user ID
-- [ ] `src/metrics.rs` — Prometheus metrics middleware
-  - [ ] Request duration histogram
-  - [ ] Request counter by method/path/status
-  - [ ] Active request gauge
-- [ ] `src/cors.rs` — CORS middleware
-  - [ ] Configurable allowed origins
-  - [ ] Proper preflight handling
-- [ ] `src/rate_limit.rs` — rate limiting middleware
-  - [ ] Redis-backed sliding window
-  - [ ] Per-tenant and per-user limits
-  - [ ] Return `X-RateLimit-*` headers
-  - [ ] 429 status with `Retry-After`
-- [ ] Unit tests for each middleware
+- [x] `src/auth.rs` — JWT validation middleware
+  - [x] Extract and validate JWT from `Authorization` header
+  - [x] Parse claims (sub, tid, org, roles, exp)
+  - [x] Add user context to Axum extensions
+  - [x] Token blacklist check (Redis)
+- [x] `src/tenant.rs` — tenant extraction middleware
+  - [x] Extract `X-Tenant-ID` header
+  - [x] Validate against JWT claims
+  - [x] Add to request extensions
+- [x] `src/logging.rs` — request logging middleware
+  - [x] Log request method, path, status, duration
+  - [x] Include request ID, tenant ID, user ID
+- [x] `src/metrics.rs` — Prometheus metrics middleware
+  - [x] Request duration histogram
+  - [x] Request counter by method/path/status
+  - [x] Active request gauge
+- [x] `src/cors.rs` — CORS middleware
+  - [x] Configurable allowed origins
+  - [x] Proper preflight handling
+- [x] `src/rate_limit.rs` — rate limiting middleware
+  - [x] Redis-backed sliding window
+  - [x] Per-tenant and per-user limits
+  - [x] Return `X-RateLimit-*` headers
+  - [x] 429 status with `Retry-After`
+- [x] Unit tests for each middleware
 
 ### 2.1.6 Health Check Module
-- [ ] `libs/rust/common/src/health.rs` — health check framework
-  - [ ] `HealthCheck` trait
-  - [ ] `DatabaseHealthCheck` implementation
-  - [ ] `RedisHealthCheck` implementation
-  - [ ] Aggregate health status endpoint
-  - [ ] Dependency status reporting
+- [x] `libs/rust/common/src/health.rs` — health check framework
+  - [x] `HealthCheck` trait
+  - [x] `DatabaseHealthCheck` implementation
+  - [x] `RedisHealthCheck` implementation
+  - [x] Aggregate health status endpoint
+  - [x] Dependency status reporting
 
 ### 2.1.7 Tracing & Observability
-- [ ] `libs/rust/common/src/tracing.rs` — OpenTelemetry setup
-  - [ ] Initialize OpenTelemetry tracer
-  - [ ] Jaeger exporter configuration
-  - [ ] Context propagation helpers
-  - [ ] Span creation macros
-- [ ] `libs/rust/common/src/metrics.rs` — Prometheus metrics
-  - [ ] Metrics registry
-  - [ ] Counter, histogram, gauge helpers
-  - [ ] `/metrics` endpoint handler
+- [x] `libs/rust/common/src/tracing.rs` — OpenTelemetry setup
+  - [x] Initialize OpenTelemetry tracer
+  - [x] Jaeger exporter configuration
+  - [x] Context propagation helpers
+  - [x] Span creation macros
+- [x] `libs/rust/common/src/metrics.rs` — Prometheus metrics
+  - [x] Metrics registry
+  - [x] Counter, histogram, gauge helpers
+  - [x] `/metrics` endpoint handler
 
 ### 2.1.8 Documentation & Testing
-- [ ] `libs/rust/README.md` — usage guide for each crate
-- [ ] Examples in `libs/rust/examples/` directory
-- [ ] Run `cargo test --workspace` — all tests passing
-- [ ] Run `cargo clippy --workspace -- -D warnings` — zero warnings
-- [ ] Run `cargo fmt --check` — all code formatted
+- [x] `libs/rust/README.md` — usage guide for each crate
+- [x] Examples in `libs/rust/examples/` directory
+- [x] Run `cargo test --workspace` — all tests passing
+- [x] Run `cargo clippy --workspace -- -D warnings` — zero warnings
+- [x] Run `cargo fmt --check` — all code formatted
 
 ---
 
@@ -378,267 +378,267 @@ Publish events for other services:
 Subscription management with Stripe integration, usage metering, invoicing, and proration.
 
 ### 2.3.1 Scaffold & Configuration
-- [ ] Create `services/billing-service/` directory
-- [ ] Initialize Cargo project: `cargo init --name billing-service`
-- [ ] Add dependencies in `Cargo.toml`:
-  - [ ] `axum`, `tokio`, `tower`, `tower-http`
-  - [ ] `sqlx` with postgres feature
-  - [ ] `redis`
-  - [ ] `stripe-rust` (or `async-stripe`)
-  - [ ] `serde`, `serde_json`
-  - [ ] Workspace dependencies from `libs/rust`
-- [ ] Add workspace member to `libs/rust/Cargo.toml`
-- [ ] Create `config/config.toml` — service configuration:
-  - [ ] Server config (host, port)
-  - [ ] Database config
-  - [ ] Redis config
-  - [ ] Stripe config (secret key, webhook secret, publishable key)
-  - [ ] Invoice config (due days, late fee percentage)
-  - [ ] Feature flag for Stripe test mode
-- [ ] Create `.env.example`
-- [ ] Verify `cargo build` compiles
+- [x] Create `services/billing-service/` directory
+- [x] Initialize Cargo project: `cargo init --name billing-service`
+- [x] Add dependencies in `Cargo.toml`:
+  - [x] `axum`, `tokio`, `tower`, `tower-http`
+  - [x] `sqlx` with postgres feature
+  - [x] `redis`
+  - [x] `stripe-rust` (or `async-stripe`)
+  - [x] `serde`, `serde_json`
+  - [x] Workspace dependencies from `libs/rust`
+- [x] Add workspace member to `libs/rust/Cargo.toml`
+- [x] Create `config/config.toml` — service configuration:
+  - [x] Server config (host, port)
+  - [x] Database config
+  - [x] Redis config
+  - [x] Stripe config (secret key, webhook secret, publishable key)
+  - [x] Invoice config (due days, late fee percentage)
+  - [x] Feature flag for Stripe test mode
+- [x] Create `.env.example`
+- [x] Verify `cargo build` compiles
 
 ### 2.3.2 Database Migrations
 Use `sqlx-cli` for migrations: `cargo install sqlx-cli`.
 
-- [ ] `migrations/001_create_subscriptions_table.up.sql`
+- [x] `migrations/001_create_subscriptions_table.up.sql`
   - Columns: `id`, `tenant_id`, `org_id`, `plan_id`, `stripe_subscription_id`, `status` (enum: active/past_due/canceled/paused), `current_period_start`, `current_period_end`, `cancel_at`, `canceled_at`, `trial_end`, `created_at`, `updated_at`
   - Indexes: `(tenant_id)`, `(stripe_subscription_id)` UNIQUE
   - Only one active subscription per tenant
-- [ ] `migrations/001_create_subscriptions_table.down.sql`
-- [ ] `migrations/002_create_plans_table.up.sql`
+- [x] `migrations/001_create_subscriptions_table.down.sql`
+- [x] `migrations/002_create_plans_table.up.sql`
   - Columns: `id`, `name`, `stripe_price_id`, `billing_interval` (enum: month/year), `price_cents`, `currency`, `features` (JSONB), `is_active`, `created_at`, `updated_at`
   - Purpose: mirror Stripe plans/prices locally
   - Index: `(stripe_price_id)` UNIQUE
   - Seed with starter, professional, enterprise plans
-- [ ] `migrations/002_create_plans_table.down.sql`
-- [ ] `migrations/003_create_invoices_table.up.sql`
+- [x] `migrations/002_create_plans_table.down.sql`
+- [x] `migrations/003_create_invoices_table.up.sql`
   - Columns: `id`, `tenant_id`, `subscription_id`, `stripe_invoice_id`, `invoice_number`, `status` (enum: draft/open/paid/void/uncollectible), `amount_due_cents`, `amount_paid_cents`, `currency`, `due_date`, `paid_at`, `pdf_url`, `created_at`, `updated_at`
   - Indexes: `(tenant_id, created_at)`, `(stripe_invoice_id)` UNIQUE
-- [ ] `migrations/003_create_invoices_table.down.sql`
-- [ ] `migrations/004_create_payments_table.up.sql`
+- [x] `migrations/003_create_invoices_table.down.sql`
+- [x] `migrations/004_create_payments_table.up.sql`
   - Columns: `id`, `tenant_id`, `invoice_id`, `stripe_payment_intent_id`, `amount_cents`, `currency`, `status` (enum: succeeded/pending/failed), `payment_method_type`, `receipt_url`, `failure_reason`, `paid_at`, `created_at`
   - Purpose: track all payment attempts
   - Indexes: `(tenant_id, created_at)`, `(stripe_payment_intent_id)` UNIQUE
   - NEVER store card numbers, CVV, or full PANs
-- [ ] `migrations/004_create_payments_table.down.sql`
-- [ ] `migrations/005_create_usage_records_table.up.sql`
+- [x] `migrations/004_create_payments_table.down.sql`
+- [x] `migrations/005_create_usage_records_table.up.sql`
   - Columns: `id`, `tenant_id`, `subscription_id`, `metric_name` (e.g., api_calls, storage_gb, users), `quantity`, `recorded_at`, `aggregated`, `created_at`
   - Purpose: metered billing data
   - Indexes: `(tenant_id, metric_name, recorded_at)`, `(subscription_id, aggregated)`
-- [ ] `migrations/005_create_usage_records_table.down.sql`
-- [ ] Run migrations: `sqlx migrate run`
+- [x] `migrations/005_create_usage_records_table.down.sql`
+- [x] Run migrations: `sqlx migrate run`
 
 ### 2.3.3 Domain Models
-- [ ] `src/models/subscription.rs`
-  - [ ] `Subscription` struct
-  - [ ] `CreateSubscriptionRequest` with validation
-  - [ ] `UpdateSubscriptionRequest` (upgrade/downgrade)
-  - [ ] `CancelSubscriptionRequest`
-  - [ ] `SubscriptionResponse`
-  - [ ] `SubscriptionStatus` enum
-- [ ] `src/models/plan.rs`
-  - [ ] `Plan` struct
-  - [ ] `PlanResponse`
-  - [ ] `BillingInterval` enum
-  - [ ] `Features` struct (from JSONB)
-- [ ] `src/models/invoice.rs`
-  - [ ] `Invoice` struct
-  - [ ] `InvoiceResponse`
-  - [ ] `InvoiceStatus` enum
-  - [ ] `InvoiceLineItem` struct
-- [ ] `src/models/payment.rs`
-  - [ ] `Payment` struct
-  - [ ] `PaymentResponse` (without sensitive data)
-  - [ ] `PaymentStatus` enum
-- [ ] `src/models/usage.rs`
-  - [ ] `UsageRecord` struct
-  - [ ] `RecordUsageRequest`
-  - [ ] `UsageResponse` with aggregation
+- [x] `src/models/subscription.rs`
+  - [x] `Subscription` struct
+  - [x] `CreateSubscriptionRequest` with validation
+  - [x] `UpdateSubscriptionRequest` (upgrade/downgrade)
+  - [x] `CancelSubscriptionRequest`
+  - [x] `SubscriptionResponse`
+  - [x] `SubscriptionStatus` enum
+- [x] `src/models/plan.rs`
+  - [x] `Plan` struct
+  - [x] `PlanResponse`
+  - [x] `BillingInterval` enum
+  - [x] `Features` struct (from JSONB)
+- [x] `src/models/invoice.rs`
+  - [x] `Invoice` struct
+  - [x] `InvoiceResponse`
+  - [x] `InvoiceStatus` enum
+  - [x] `InvoiceLineItem` struct
+- [x] `src/models/payment.rs`
+  - [x] `Payment` struct
+  - [x] `PaymentResponse` (without sensitive data)
+  - [x] `PaymentStatus` enum
+- [x] `src/models/usage.rs`
+  - [x] `UsageRecord` struct
+  - [x] `RecordUsageRequest`
+  - [x] `UsageResponse` with aggregation
 
 ### 2.3.4 Repository Layer
 All queries use `libs/rust/database` helpers and tenant scoping.
 
-- [ ] `src/repository/subscription_repo.rs`
-  - [ ] `create(pool, subscription)` — tenant-scoped
-  - [ ] `get_by_id(pool, id)` — tenant-scoped
-  - [ ] `get_by_tenant(pool, tenant_id)` — current subscription
-  - [ ] `update(pool, id, fields)` — partial update
-  - [ ] `cancel(pool, id)` — set canceled_at
-  - [ ] `get_expiring_trials(pool, days)` — for reminder notifications
-- [ ] `src/repository/plan_repo.rs`
-  - [ ] `get_by_id(pool, id)`
-  - [ ] `get_by_stripe_price_id(pool, stripe_price_id)`
-  - [ ] `list_active(pool)` — public plans
-- [ ] `src/repository/invoice_repo.rs`
-  - [ ] `create(pool, invoice)` — tenant-scoped
-  - [ ] `get_by_id(pool, id)` — tenant-scoped
-  - [ ] `list_by_tenant(pool, tenant_id, pagination)` — with filtering
-  - [ ] `update_status(pool, id, status)`
-- [ ] `src/repository/payment_repo.rs`
-  - [ ] `create(pool, payment)` — tenant-scoped
-  - [ ] `get_by_invoice(pool, invoice_id)`
-  - [ ] `list_by_tenant(pool, tenant_id, pagination)`
-- [ ] `src/repository/usage_repo.rs`
-  - [ ] `record(pool, usage)` — tenant-scoped
-  - [ ] `aggregate(pool, tenant_id, metric, start, end)` — sum quantities
-  - [ ] `get_current_period(pool, subscription_id)` — usage this billing cycle
-- [ ] `src/repository/cache/` — Redis caching for plans and subscriptions (5 min TTL)
-- [ ] Unit tests for each repository (use `sqlx::test` with test database)
+- [x] `src/repository/subscription_repo.rs`
+  - [x] `create(pool, subscription)` — tenant-scoped
+  - [x] `get_by_id(pool, id)` — tenant-scoped
+  - [x] `get_by_tenant(pool, tenant_id)` — current subscription
+  - [x] `update(pool, id, fields)` — partial update
+  - [x] `cancel(pool, id)` — set canceled_at
+  - [x] `get_expiring_trials(pool, days)` — for reminder notifications
+- [x] `src/repository/plan_repo.rs`
+  - [x] `get_by_id(pool, id)`
+  - [x] `get_by_stripe_price_id(pool, stripe_price_id)`
+  - [x] `list_active(pool)` — public plans
+- [x] `src/repository/invoice_repo.rs`
+  - [x] `create(pool, invoice)` — tenant-scoped
+  - [x] `get_by_id(pool, id)` — tenant-scoped
+  - [x] `list_by_tenant(pool, tenant_id, pagination)` — with filtering
+  - [x] `update_status(pool, id, status)`
+- [x] `src/repository/payment_repo.rs`
+  - [x] `create(pool, payment)` — tenant-scoped
+  - [x] `get_by_invoice(pool, invoice_id)`
+  - [x] `list_by_tenant(pool, tenant_id, pagination)`
+- [x] `src/repository/usage_repo.rs`
+  - [x] `record(pool, usage)` — tenant-scoped
+  - [x] `aggregate(pool, tenant_id, metric, start, end)` — sum quantities
+  - [x] `get_current_period(pool, subscription_id)` — usage this billing cycle
+- [x] `src/repository/cache/` — Redis caching for plans and subscriptions (5 min TTL)
+- [x] Unit tests for each repository (use `sqlx::test` with test database)
 
 ### 2.3.5 Service Layer
 
 #### Core Services
-- [ ] `src/service/subscription_service.rs`
-  - [ ] `create_subscription(ctx, req)` — create in Stripe, save locally, publish event
-    - [ ] Validate plan exists
-    - [ ] Check tenant doesn't have active subscription (or cancel existing)
-    - [ ] Create Stripe subscription with trial if new customer
-    - [ ] Handle Stripe payment failures gracefully
-  - [ ] `get_subscription(ctx, tenant_id)` — with plan details
-  - [ ] `upgrade_subscription(ctx, req)` — change plan with proration
-    - [ ] Calculate proration amount
-    - [ ] Update Stripe subscription
-    - [ ] Sync status locally
-  - [ ] `downgrade_subscription(ctx, req)` — schedule change for end of period
-  - [ ] `cancel_subscription(ctx, immediate)` — cancel now or at period end
-  - [ ] `pause_subscription(ctx)` — pause billing (if supported by plan)
-  - [ ] `resume_subscription(ctx)` — resume from pause
+- [x] `src/service/subscription_service.rs`
+  - [x] `create_subscription(ctx, req)` — create in Stripe, save locally, publish event
+    - [x] Validate plan exists
+    - [x] Check tenant doesn't have active subscription (or cancel existing)
+    - [x] Create Stripe subscription with trial if new customer
+    - [x] Handle Stripe payment failures gracefully
+  - [x] `get_subscription(ctx, tenant_id)` — with plan details
+  - [x] `upgrade_subscription(ctx, req)` — change plan with proration
+    - [x] Calculate proration amount
+    - [x] Update Stripe subscription
+    - [x] Sync status locally
+  - [x] `downgrade_subscription(ctx, req)` — schedule change for end of period
+  - [x] `cancel_subscription(ctx, immediate)` — cancel now or at period end
+  - [x] `pause_subscription(ctx)` — pause billing (if supported by plan)
+  - [x] `resume_subscription(ctx)` — resume from pause
 
-- [ ] `src/service/invoice_service.rs`
-  - [ ] `list_invoices(ctx, tenant_id, filter)` — paginated
-  - [ ] `get_invoice(ctx, id)` — with line items
-  - [ ] `generate_pdf(ctx, invoice_id)` — call File Service API
-  - [ ] `send_invoice(ctx, invoice_id)` — trigger email notification
-  - [ ] `mark_as_paid(ctx, id)` — manual payment confirmation
+- [x] `src/service/invoice_service.rs`
+  - [x] `list_invoices(ctx, tenant_id, filter)` — paginated
+  - [x] `get_invoice(ctx, id)` — with line items
+  - [x] `generate_pdf(ctx, invoice_id)` — call File Service API
+  - [x] `send_invoice(ctx, invoice_id)` — trigger email notification
+  - [x] `mark_as_paid(ctx, id)` — manual payment confirmation
 
-- [ ] `src/service/usage_service.rs`
-  - [ ] `record_usage(ctx, req)` — save usage record, publish event
-  - [ ] `get_usage(ctx, tenant_id, metric, period)` — aggregated usage
-  - [ ] `get_quota_status(ctx, tenant_id)` — current usage vs plan limits
-  - [ ] `enforce_quota(ctx, tenant_id, metric)` — check if over limit
-  - [ ] Background job to sync usage to Stripe metered billing
+- [x] `src/service/usage_service.rs`
+  - [x] `record_usage(ctx, req)` — save usage record, publish event
+  - [x] `get_usage(ctx, tenant_id, metric, period)` — aggregated usage
+  - [x] `get_quota_status(ctx, tenant_id)` — current usage vs plan limits
+  - [x] `enforce_quota(ctx, tenant_id, metric)` — check if over limit
+  - [x] Background job to sync usage to Stripe metered billing
 
-- [ ] `src/service/webhook_service.rs`
-  - [ ] `handle_webhook(signature, payload)` — verify and process Stripe webhooks:
-    - [ ] `invoice.payment_succeeded` → update invoice status, publish event
-    - [ ] `invoice.payment_failed` → update status, trigger notification
-    - [ ] `customer.subscription.updated` → sync subscription status
-    - [ ] `customer.subscription.deleted` → mark as canceled
-    - [ ] `payment_intent.succeeded` → record payment
-    - [ ] `payment_intent.payment_failed` → log failure
-  - [ ] Verify webhook signature (Stripe's HMAC)
-  - [ ] Idempotency handling (process each event only once)
+- [x] `src/service/webhook_service.rs`
+  - [x] `handle_webhook(signature, payload)` — verify and process Stripe webhooks:
+    - [x] `invoice.payment_succeeded` → update invoice status, publish event
+    - [x] `invoice.payment_failed` → update status, trigger notification
+    - [x] `customer.subscription.updated` → sync subscription status
+    - [x] `customer.subscription.deleted` → mark as canceled
+    - [x] `payment_intent.succeeded` → record payment
+    - [x] `payment_intent.payment_failed` → log failure
+  - [x] Verify webhook signature (Stripe's HMAC)
+  - [x] Idempotency handling (process each event only once)
 
 #### Stripe Integration
-- [ ] `src/service/stripe_client.rs`
-  - [ ] Wrapper around `stripe-rust` SDK
-  - [ ] `create_customer(email, metadata)` — for new tenants
-  - [ ] `create_subscription(customer_id, price_id, options)`
-  - [ ] `update_subscription(subscription_id, price_id)`
-  - [ ] `cancel_subscription(subscription_id, immediately)`
-  - [ ] `retrieve_invoice(invoice_id)`
-  - [ ] `create_usage_record(subscription_item_id, quantity)`
-  - [ ] Error handling and retry logic
-  - [ ] Logging (no sensitive data)
+- [x] `src/service/stripe_client.rs`
+  - [x] Wrapper around `stripe-rust` SDK
+  - [x] `create_customer(email, metadata)` — for new tenants
+  - [x] `create_subscription(customer_id, price_id, options)`
+  - [x] `update_subscription(subscription_id, price_id)`
+  - [x] `cancel_subscription(subscription_id, immediately)`
+  - [x] `retrieve_invoice(invoice_id)`
+  - [x] `create_usage_record(subscription_item_id, quantity)`
+  - [x] Error handling and retry logic
+  - [x] Logging (no sensitive data)
 
 #### Proration Logic
-- [ ] `src/service/proration.rs`
-  - [ ] Calculate prorated amount for upgrades/downgrades
-  - [ ] Credit calculation for unused time
-  - [ ] Generate preview invoice before applying change
-  - [ ] Handle different billing intervals (monthly vs annual)
+- [x] `src/service/proration.rs`
+  - [x] Calculate prorated amount for upgrades/downgrades
+  - [x] Credit calculation for unused time
+  - [x] Generate preview invoice before applying change
+  - [x] Handle different billing intervals (monthly vs annual)
 
 ### 2.3.6 HTTP Handlers
-- [ ] `src/handlers/subscription_handler.rs`
-  - [ ] `GET /api/v1/billing/subscription` — get current subscription
-  - [ ] `POST /api/v1/billing/subscription` — create subscription
-  - [ ] `PUT /api/v1/billing/subscription` — upgrade/downgrade
-  - [ ] `DELETE /api/v1/billing/subscription` — cancel subscription
-  - [ ] `POST /api/v1/billing/subscription/pause` — pause subscription
-  - [ ] `POST /api/v1/billing/subscription/resume` — resume subscription
-- [ ] `src/handlers/invoice_handler.rs`
-  - [ ] `GET /api/v1/billing/invoices` — list invoices (tenant-scoped)
-  - [ ] `GET /api/v1/billing/invoices/:id` — get invoice details
-  - [ ] `GET /api/v1/billing/invoices/:id/pdf` — download PDF
-  - [ ] `POST /api/v1/billing/invoices/:id/pay` — manual payment
-- [ ] `src/handlers/usage_handler.rs`
-  - [ ] `GET /api/v1/billing/usage` — get current usage
-  - [ ] `GET /api/v1/billing/usage/quota` — quota status
-  - [ ] `POST /api/v1/billing/usage/record` — record usage (internal API)
-- [ ] `src/handlers/webhook_handler.rs`
-  - [ ] `POST /api/v1/billing/webhook` — Stripe webhook endpoint (public)
-  - [ ] Signature verification
-  - [ ] Async processing (queue events if needed)
-- [ ] `src/handlers/plan_handler.rs`
-  - [ ] `GET /api/v1/billing/plans` — list available plans
+- [x] `src/handlers/subscription_handler.rs`
+  - [x] `GET /api/v1/billing/subscription` — get current subscription
+  - [x] `POST /api/v1/billing/subscription` — create subscription
+  - [x] `PUT /api/v1/billing/subscription` — upgrade/downgrade
+  - [x] `DELETE /api/v1/billing/subscription` — cancel subscription
+  - [x] `POST /api/v1/billing/subscription/pause` — pause subscription
+  - [x] `POST /api/v1/billing/subscription/resume` — resume subscription
+- [x] `src/handlers/invoice_handler.rs`
+  - [x] `GET /api/v1/billing/invoices` — list invoices (tenant-scoped)
+  - [x] `GET /api/v1/billing/invoices/:id` — get invoice details
+  - [x] `GET /api/v1/billing/invoices/:id/pdf` — download PDF
+  - [x] `POST /api/v1/billing/invoices/:id/pay` — manual payment
+- [x] `src/handlers/usage_handler.rs`
+  - [x] `GET /api/v1/billing/usage` — get current usage
+  - [x] `GET /api/v1/billing/usage/quota` — quota status
+  - [x] `POST /api/v1/billing/usage/record` — record usage (internal API)
+- [x] `src/handlers/webhook_handler.rs`
+  - [x] `POST /api/v1/billing/webhook` — Stripe webhook endpoint (public)
+  - [x] Signature verification
+  - [x] Async processing (queue events if needed)
+- [x] `src/handlers/plan_handler.rs`
+  - [x] `GET /api/v1/billing/plans` — list available plans
 
 ### 2.3.7 API Route Registration
-- [ ] `src/routes.rs` — configure Axum router
-  - [ ] Apply middleware stack from `libs/rust/middleware`
-  - [ ] Auth middleware on all routes except webhook
-  - [ ] Tenant middleware
-  - [ ] Logging and metrics
-- [ ] Public routes: `/health`, `/api/v1/billing/webhook`
-- [ ] Protected routes: all other endpoints
-- [ ] Rate limiting on webhook endpoint (prevent abuse)
+- [x] `src/routes.rs` — configure Axum router
+  - [x] Apply middleware stack from `libs/rust/middleware`
+  - [x] Auth middleware on all routes except webhook
+  - [x] Tenant middleware
+  - [x] Logging and metrics
+- [x] Public routes: `/health`, `/api/v1/billing/webhook`
+- [x] Protected routes: all other endpoints
+- [x] Rate limiting on webhook endpoint (prevent abuse)
 
 ### 2.3.8 Redis Streams Events
-- [ ] `subscription.created` — new subscription
-- [ ] `subscription.updated` — plan change, status change
-- [ ] `subscription.canceled` — subscription canceled
-- [ ] `invoice.paid` — payment succeeded
-- [ ] `invoice.failed` — payment failed
-- [ ] `usage.recorded` — usage data point
-- [ ] `usage.quota_exceeded` — over plan limits
+- [x] `subscription.created` — new subscription
+- [x] `subscription.updated` — plan change, status change
+- [x] `subscription.canceled` — subscription canceled
+- [x] `invoice.paid` — payment succeeded
+- [x] `invoice.failed` — payment failed
+- [x] `usage.recorded` — usage data point
+- [x] `usage.quota_exceeded` — over plan limits
 
 ### 2.3.9 Observability
-- [ ] OpenTelemetry tracing on all operations
-- [ ] Prometheus metrics:
-  - [ ] `billing_subscriptions_total` (status)
-  - [ ] `billing_revenue_cents` (period)
-  - [ ] `billing_invoices_total` (status)
-  - [ ] `billing_payments_total` (status)
-  - [ ] `billing_usage_total` (metric_name)
-  - [ ] `billing_webhook_events_total` (event_type, status)
-  - [ ] `billing_stripe_api_duration_seconds` (operation)
-- [ ] Health check with Stripe API connectivity and database
+- [x] OpenTelemetry tracing on all operations
+- [x] Prometheus metrics:
+  - [x] `billing_subscriptions_total` (status)
+  - [x] `billing_revenue_cents` (period)
+  - [x] `billing_invoices_total` (status)
+  - [x] `billing_payments_total` (status)
+  - [x] `billing_usage_total` (metric_name)
+  - [x] `billing_webhook_events_total` (event_type, status)
+  - [x] `billing_stripe_api_duration_seconds` (operation)
+- [x] Health check with Stripe API connectivity and database
 
 ### 2.3.10 Containerfile
-- [ ] Multi-stage Rust build (builder → runtime)
-- [ ] Use latest stable `rust:<version>-slim` for builder (check current stable at build time)
-- [ ] Use `debian:bookworm-slim` for runtime
-- [ ] Non-root user
-- [ ] `HEALTHCHECK` instruction
-- [ ] Copy only necessary binaries
-- [ ] No secrets in image
+- [x] Multi-stage Rust build (builder → runtime)
+- [x] Use latest stable `rust:<version>-slim` for builder (check current stable at build time)
+- [x] Use `debian:bookworm-slim` for runtime
+- [x] Non-root user
+- [x] `HEALTHCHECK` instruction
+- [x] Copy only necessary binaries
+- [x] No secrets in image
 
 ### 2.3.11 Tests
-- [ ] Unit tests:
-  - [ ] Proration calculations
-  - [ ] Quota enforcement logic
-  - [ ] Webhook signature verification
-  - [ ] Plan upgrade/downgrade scenarios
-  - [ ] Payment status transitions
-- [ ] Integration tests:
-  - [ ] Full subscription lifecycle (create → upgrade → cancel)
-  - [ ] Invoice generation flow
-  - [ ] Usage recording and aggregation
-  - [ ] Webhook processing (mock Stripe)
-- [ ] Security tests:
-  - [ ] PCI DSS compliance checks (no card data storage)
-  - [ ] Webhook signature tampering attempts
-  - [ ] Tenant isolation (can't access other tenant's billing)
-  - [ ] SQL injection in usage records
-  - [ ] Amount manipulation attempts
+- [x] Unit tests:
+  - [x] Proration calculations
+  - [x] Quota enforcement logic
+  - [x] Webhook signature verification
+  - [x] Plan upgrade/downgrade scenarios
+  - [x] Payment status transitions
+- [x] Integration tests:
+  - [x] Full subscription lifecycle (create → upgrade → cancel)
+  - [x] Invoice generation flow
+  - [x] Usage recording and aggregation
+  - [x] Webhook processing (mock Stripe)
+- [x] Security tests:
+  - [x] PCI DSS compliance checks (no card data storage)
+  - [x] Webhook signature tampering attempts
+  - [x] Tenant isolation (can't access other tenant's billing)
+  - [x] SQL injection in usage records
+  - [x] Amount manipulation attempts
 
 ### 2.3.12 Documentation
-- [ ] `README.md` — architecture, Stripe setup, testing with test mode
-- [ ] `libs/contracts/billing-service.yaml` — OpenAPI spec
-- [ ] Stripe webhook configuration guide
-- [ ] Plan configuration documentation
-- [ ] PCI DSS compliance notes
-- [ ] Usage metering guide for other services
+- [x] `README.md` — architecture, Stripe setup, testing with test mode
+- [x] `libs/contracts/billing-service.yaml` — OpenAPI spec
+- [x] Stripe webhook configuration guide
+- [x] Plan configuration documentation
+- [x] PCI DSS compliance notes
+- [x] Usage metering guide for other services
 
 ---
 
@@ -647,86 +647,86 @@ All queries use `libs/rust/database` helpers and tenant scoping.
 S3-compatible file storage with MinIO, quota enforcement, virus scanning, and signed URL generation.
 
 ### 2.4.1 Scaffold & Configuration
-- [ ] Create `services/file-service/` directory
-- [ ] Initialize Cargo project: `cargo init --name file-service`
-- [ ] Add dependencies:
-  - [ ] `axum`, `tokio`, `tower`, `tower-http`
-  - [ ] `sqlx` with postgres feature
-  - [ ] `redis`
-  - [ ] `aws-sdk-s3` (MinIO is S3-compatible)
-  - [ ] `image` (for thumbnail generation)
-  - [ ] `mime_guess`
-  - [ ] `sha2` (for file hashing)
-  - [ ] Workspace dependencies from `libs/rust`
-- [ ] Create `config/config.toml`:
-  - [ ] Server config
-  - [ ] Database and Redis config
-  - [ ] S3 config (endpoint, region, bucket, access key, secret key)
-  - [ ] Quota config (default per-tenant limit, per-file size limit)
-  - [ ] Thumbnail config (max dimensions, quality)
-  - [ ] Allowed file types (MIME types whitelist)
-  - [ ] Virus scanning config (ClamAV endpoint, enabled flag)
-- [ ] Verify `cargo build` compiles
+- [x] Create `services/file-service/` directory
+- [x] Initialize Cargo project: `cargo init --name file-service`
+- [x] Add dependencies:
+  - [x] `axum`, `tokio`, `tower`, `tower-http`
+  - [x] `sqlx` with postgres feature
+  - [x] `redis`
+  - [x] `aws-sdk-s3` (MinIO is S3-compatible)
+  - [x] `image` (for thumbnail generation)
+  - [x] `mime_guess`
+  - [x] `sha2` (for file hashing)
+  - [x] Workspace dependencies from `libs/rust`
+- [x] Create `config/config.toml`:
+  - [x] Server config
+  - [x] Database and Redis config
+  - [x] S3 config (endpoint, region, bucket, access key, secret key)
+  - [x] Quota config (default per-tenant limit, per-file size limit)
+  - [x] Thumbnail config (max dimensions, quality)
+  - [x] Allowed file types (MIME types whitelist)
+  - [x] Virus scanning config (ClamAV endpoint, enabled flag)
+- [x] Verify `cargo build` compiles
 
 ### 2.4.2 Database Migrations
-- [ ] `migrations/001_create_files_table.up.sql`
+- [x] `migrations/001_create_files_table.up.sql`
   - Columns: `id`, `tenant_id`, `user_id`, `org_id`, `filename`, `content_type`, `size_bytes`, `s3_key`, `s3_bucket`, `checksum_sha256`, `status` (enum: uploading/available/deleted/quarantined), `virus_scan_status` (enum: pending/clean/infected/error), `thumbnail_s3_key`, `uploaded_at`, `deleted_at`, `created_at`, `updated_at`
   - Indexes: `(tenant_id, status)`, `(s3_key)` UNIQUE, `(tenant_id, user_id)`
   - Foreign key: `user_id` references Auth Service (logical, not enforced)
-- [ ] `migrations/001_create_files_table.down.sql`
-- [ ] `migrations/002_create_storage_quotas_table.up.sql`
+- [x] `migrations/001_create_files_table.down.sql`
+- [x] `migrations/002_create_storage_quotas_table.up.sql`
   - Columns: `id`, `tenant_id`, `quota_bytes`, `used_bytes`, `updated_at`
   - Purpose: track per-tenant storage usage
   - Index: `(tenant_id)` UNIQUE
   - Trigger to update `used_bytes` on file insert/delete
-- [ ] `migrations/002_create_storage_quotas_table.down.sql`
-- [ ] `migrations/003_create_file_access_log_table.up.sql`
+- [x] `migrations/002_create_storage_quotas_table.down.sql`
+- [x] `migrations/003_create_file_access_log_table.up.sql`
   - Columns: `id`, `file_id`, `tenant_id`, `user_id`, `action` (enum: upload/download/delete/view), `ip_address`, `user_agent`, `created_at`
   - Purpose: audit trail for compliance
   - Indexes: `(file_id)`, `(tenant_id, created_at)`
-- [ ] `migrations/003_create_file_access_log_table.down.sql`
-- [ ] Run migrations
+- [x] `migrations/003_create_file_access_log_table.down.sql`
+- [x] Run migrations
 
 ### 2.4.3 Domain Models
-- [ ] `src/models/file.rs`
-  - [ ] `File` struct
-  - [ ] `UploadRequest` (multipart form data handling)
-  - [ ] `FileResponse`
-  - [ ] `FileStatus` enum
-  - [ ] `VirusScanStatus` enum
-- [ ] `src/models/quota.rs`
-  - [ ] `StorageQuota` struct
-  - [ ] `QuotaResponse`
-  - [ ] `QuotaExceededError`
-- [ ] `src/models/access_log.rs`
-  - [ ] `FileAccessLog` struct
-  - [ ] `AccessAction` enum
+- [x] `src/models/file.rs`
+  - [x] `File` struct
+  - [x] `UploadRequest` (multipart form data handling)
+  - [x] `FileResponse`
+  - [x] `FileStatus` enum
+  - [x] `VirusScanStatus` enum
+- [x] `src/models/quota.rs`
+  - [x] `StorageQuota` struct
+  - [x] `QuotaResponse`
+  - [x] `QuotaExceededError`
+- [x] `src/models/access_log.rs`
+  - [x] `FileAccessLog` struct
+  - [x] `AccessAction` enum
 
 ### 2.4.4 Repository Layer
-- [ ] `src/repository/file_repo.rs`
-  - [ ] `create(pool, file)` — tenant-scoped
-  - [ ] `get_by_id(pool, id)` — tenant-scoped
-  - [ ] `list(pool, tenant_id, filter, pagination)` — with status filtering
-  - [ ] `update_status(pool, id, status)`
-  - [ ] `update_scan_status(pool, id, scan_status)`
-  - [ ] `delete(pool, id)` — soft delete (set status=deleted)
-  - [ ] `get_by_s3_key(pool, s3_key)`
-- [ ] `src/repository/quota_repo.rs`
-  - [ ] `get_quota(pool, tenant_id)` — with upsert if missing
-  - [ ] `increment_usage(pool, tenant_id, bytes)` — atomic update
-  - [ ] `decrement_usage(pool, tenant_id, bytes)` — atomic update
-  - [ ] `check_quota(pool, tenant_id, additional_bytes)` — would exceed?
-- [ ] `src/repository/access_log_repo.rs`
-  - [ ] `create(pool, log)` — tenant-scoped
-  - [ ] `list(pool, file_id, pagination)` — audit trail
-- [ ] `src/repository/cache/` — Redis caching for file metadata (10 min TTL)
-- [ ] Unit tests for repositories
+- [x] `src/repository/file_repo.rs`
+  - [x] `create(pool, file)` — tenant-scoped
+  - [x] `get_by_id(pool, id)` — tenant-scoped
+  - [x] `list(pool, tenant_id, filter, pagination)` — with status filtering
+  - [x] `update_status(pool, id, status)`
+  - [x] `update_scan_status(pool, id, scan_status)`
+  - [x] `delete(pool, id)` — soft delete (set status=deleted)
+  - [x] `get_by_s3_key(pool, s3_key)`
+- [x] `src/repository/quota_repo.rs`
+  - [x] `get_quota(pool, tenant_id)` — with upsert if missing
+  - [x] `increment_usage(pool, tenant_id, bytes)` — atomic update
+  - [x] `decrement_usage(pool, tenant_id, bytes)` — atomic update
+  - [x] `check_quota(pool, tenant_id, additional_bytes)` — would exceed?
+- [x] `src/repository/access_log_repo.rs`
+  - [x] `create(pool, log)` — tenant-scoped
+  - [x] `list(pool, file_id, pagination)` — audit trail
+- [x] `src/repository/cache/` — Redis caching for file metadata (10 min TTL)
+- [x] Unit tests for repositories
 
 ### 2.4.5 Service Layer
 
 #### Core Services
-- [ ] `src/service/file_service.rs`
-  - [ ] `upload(ctx, stream, metadata)` — full upload flow:
+- [x] `src/service/file_service.rs`
+  - [x] `upload(ctx, stream, metadata)` — full upload flow:
     1. Validate file type (magic bytes, not just extension)
     2. Check quota
     3. Generate S3 key (tenant_id/uuid/filename)
@@ -737,130 +737,130 @@ S3-compatible file storage with MinIO, quota enforcement, virus scanning, and si
     8. Queue virus scan (async)
     9. Generate thumbnail (if image)
     10. Publish `file.uploaded` event
-  - [ ] `get_file(ctx, id)` — with download URL generation
-  - [ ] `list_files(ctx, filter)` — tenant-scoped, paginated
-  - [ ] `delete_file(ctx, id)` — soft delete + decrement quota
-  - [ ] `get_download_url(ctx, id, expiry)` — signed URL (default 1 hour)
-  - [ ] `get_upload_url(ctx, filename, content_type)` — presigned upload URL
-  - [ ] Validate no path traversal in filenames
+  - [x] `get_file(ctx, id)` — with download URL generation
+  - [x] `list_files(ctx, filter)` — tenant-scoped, paginated
+  - [x] `delete_file(ctx, id)` — soft delete + decrement quota
+  - [x] `get_download_url(ctx, id, expiry)` — signed URL (default 1 hour)
+  - [x] `get_upload_url(ctx, filename, content_type)` — presigned upload URL
+  - [x] Validate no path traversal in filenames
 
-- [ ] `src/service/quota_service.rs`
-  - [ ] `get_quota_status(ctx, tenant_id)` — current usage and limit
-  - [ ] `check_quota(ctx, tenant_id, size)` — enforce before upload
-  - [ ] `update_quota_limit(ctx, tenant_id, new_limit)` — admin only
-  - [ ] Background job to recalculate quotas (daily reconciliation)
+- [x] `src/service/quota_service.rs`
+  - [x] `get_quota_status(ctx, tenant_id)` — current usage and limit
+  - [x] `check_quota(ctx, tenant_id, size)` — enforce before upload
+  - [x] `update_quota_limit(ctx, tenant_id, new_limit)` — admin only
+  - [x] Background job to recalculate quotas (daily reconciliation)
 
-- [ ] `src/service/thumbnail_service.rs`
-  - [ ] `generate(file_id, s3_key)` — for images only
-  - [ ] Download from S3
-  - [ ] Resize to 200x200 (maintain aspect ratio)
-  - [ ] Save back to S3 with `-thumb` suffix
-  - [ ] Update file record with thumbnail S3 key
-  - [ ] Supported formats: JPEG, PNG, GIF, WebP
-  - [ ] Error handling (skip if not image or generation fails)
+- [x] `src/service/thumbnail_service.rs`
+  - [x] `generate(file_id, s3_key)` — for images only
+  - [x] Download from S3
+  - [x] Resize to 200x200 (maintain aspect ratio)
+  - [x] Save back to S3 with `-thumb` suffix
+  - [x] Update file record with thumbnail S3 key
+  - [x] Supported formats: JPEG, PNG, GIF, WebP
+  - [x] Error handling (skip if not image or generation fails)
 
-- [ ] `src/service/virus_scan_service.rs`
-  - [ ] `scan(file_id, s3_key)` — async scan
-  - [ ] Download file from S3 (stream)
-  - [ ] Send to ClamAV via TCP/Unix socket
-  - [ ] Parse scan result
-  - [ ] Update virus_scan_status
-  - [ ] If infected: set status=quarantined, publish alert event
-  - [ ] If clean: set status=available
-  - [ ] Queue scan on upload, process in background worker
+- [x] `src/service/virus_scan_service.rs`
+  - [x] `scan(file_id, s3_key)` — async scan
+  - [x] Download file from S3 (stream)
+  - [x] Send to ClamAV via TCP/Unix socket
+  - [x] Parse scan result
+  - [x] Update virus_scan_status
+  - [x] If infected: set status=quarantined, publish alert event
+  - [x] If clean: set status=available
+  - [x] Queue scan on upload, process in background worker
 
 #### S3 Client
-- [ ] `src/service/s3_client.rs`
-  - [ ] Wrapper around `aws-sdk-s3`
-  - [ ] Configure for MinIO (custom endpoint)
-  - [ ] Per-org bucket isolation (bucket name: `{org_id}-files`)
-  - [ ] Create bucket if not exists (on service startup)
-  - [ ] Bucket versioning enabled
-  - [ ] Lifecycle policy: delete files with status=deleted after 30 days
-  - [ ] `upload(bucket, key, stream, content_type)` — multipart for large files
-  - [ ] `download(bucket, key)` — stream
-  - [ ] `delete(bucket, key)`
-  - [ ] `generate_presigned_get_url(bucket, key, expiry)` — signed download
-  - [ ] `generate_presigned_put_url(bucket, key, expiry)` — signed upload
-  - [ ] Error handling and retry logic
+- [x] `src/service/s3_client.rs`
+  - [x] Wrapper around `aws-sdk-s3`
+  - [x] Configure for MinIO (custom endpoint)
+  - [x] Per-org bucket isolation (bucket name: `{org_id}-files`)
+  - [x] Create bucket if not exists (on service startup)
+  - [x] Bucket versioning enabled
+  - [x] Lifecycle policy: delete files with status=deleted after 30 days
+  - [x] `upload(bucket, key, stream, content_type)` — multipart for large files
+  - [x] `download(bucket, key)` — stream
+  - [x] `delete(bucket, key)`
+  - [x] `generate_presigned_get_url(bucket, key, expiry)` — signed download
+  - [x] `generate_presigned_put_url(bucket, key, expiry)` — signed upload
+  - [x] Error handling and retry logic
 
 ### 2.4.6 HTTP Handlers
-- [ ] `src/handlers/file_handler.rs`
-  - [ ] `POST /api/v1/files/upload` — multipart form upload
-    - [ ] Accept `file` field (binary)
-    - [ ] Optional metadata fields (tags, description)
-    - [ ] Return file ID and metadata
-  - [ ] `GET /api/v1/files/:id` — get file metadata
-  - [ ] `GET /api/v1/files/:id/download` — redirect to signed S3 URL
-  - [ ] `GET /api/v1/files/:id/thumbnail` — redirect to thumbnail URL
-  - [ ] `DELETE /api/v1/files/:id` — soft delete
-  - [ ] `GET /api/v1/files` — list files (tenant-scoped, paginated)
-  - [ ] `GET /api/v1/files/:id/access-log` — audit trail
-- [ ] `src/handlers/quota_handler.rs`
-  - [ ] `GET /api/v1/files/quota` — current quota status
-- [ ] `src/handlers/presigned_handler.rs`
-  - [ ] `POST /api/v1/files/presigned-upload-url` — generate upload URL
-  - [ ] Return URL + required headers for client-side upload
+- [x] `src/handlers/file_handler.rs`
+  - [x] `POST /api/v1/files/upload` — multipart form upload
+    - [x] Accept `file` field (binary)
+    - [x] Optional metadata fields (tags, description)
+    - [x] Return file ID and metadata
+  - [x] `GET /api/v1/files/:id` — get file metadata
+  - [x] `GET /api/v1/files/:id/download` — redirect to signed S3 URL
+  - [x] `GET /api/v1/files/:id/thumbnail` — redirect to thumbnail URL
+  - [x] `DELETE /api/v1/files/:id` — soft delete
+  - [x] `GET /api/v1/files` — list files (tenant-scoped, paginated)
+  - [x] `GET /api/v1/files/:id/access-log` — audit trail
+- [x] `src/handlers/quota_handler.rs`
+  - [x] `GET /api/v1/files/quota` — current quota status
+- [x] `src/handlers/presigned_handler.rs`
+  - [x] `POST /api/v1/files/presigned-upload-url` — generate upload URL
+  - [x] Return URL + required headers for client-side upload
 
 ### 2.4.7 API Route Registration
-- [ ] `src/routes.rs` — Axum router with middleware
-  - [ ] Auth, tenant, logging, metrics middleware
-  - [ ] File upload size limit (e.g., 100MB per request)
-  - [ ] Multipart form data handling
-- [ ] Public routes: `/health`
-- [ ] Protected routes: all file operations
+- [x] `src/routes.rs` — Axum router with middleware
+  - [x] Auth, tenant, logging, metrics middleware
+  - [x] File upload size limit (e.g., 100MB per request)
+  - [x] Multipart form data handling
+- [x] Public routes: `/health`
+- [x] Protected routes: all file operations
 
 ### 2.4.8 Redis Streams Events
-- [ ] `file.uploaded` — new file uploaded
-- [ ] `file.deleted` — file deleted
-- [ ] `file.scan_completed` — virus scan result
-- [ ] `file.quarantined` — infected file detected
-- [ ] `quota.exceeded` — tenant over quota
+- [x] `file.uploaded` — new file uploaded
+- [x] `file.deleted` — file deleted
+- [x] `file.scan_completed` — virus scan result
+- [x] `file.quarantined` — infected file detected
+- [x] `quota.exceeded` — tenant over quota
 
 ### 2.4.9 Observability
-- [ ] OpenTelemetry tracing
-- [ ] Prometheus metrics:
-  - [ ] `files_uploads_total` (status)
-  - [ ] `files_downloads_total`
-  - [ ] `files_storage_bytes` (tenant_id)
-  - [ ] `files_scan_duration_seconds`
-  - [ ] `files_upload_duration_seconds`
-  - [ ] `files_virus_detections_total`
-- [ ] Health check with MinIO and database connectivity
+- [x] OpenTelemetry tracing
+- [x] Prometheus metrics:
+  - [x] `files_uploads_total` (status)
+  - [x] `files_downloads_total`
+  - [x] `files_storage_bytes` (tenant_id)
+  - [x] `files_scan_duration_seconds`
+  - [x] `files_upload_duration_seconds`
+  - [x] `files_virus_detections_total`
+- [x] Health check with MinIO and database connectivity
 
 ### 2.4.10 Containerfile
-- [ ] Multi-stage Rust build
-- [ ] Non-root user
-- [ ] `HEALTHCHECK` instruction
-- [ ] No secrets in image
+- [x] Multi-stage Rust build
+- [x] Non-root user
+- [x] `HEALTHCHECK` instruction
+- [x] No secrets in image
 
 ### 2.4.11 Tests
-- [ ] Unit tests:
-  - [ ] File type validation (magic bytes)
-  - [ ] Quota enforcement
-  - [ ] Path traversal prevention
-  - [ ] S3 key generation
-  - [ ] Thumbnail generation
-- [ ] Integration tests:
-  - [ ] Full upload → scan → download flow
-  - [ ] Quota exceeded scenario
-  - [ ] Presigned URL generation and usage
-  - [ ] Virus detection (mock ClamAV)
-- [ ] Security tests:
-  - [ ] Upload malicious file types (executables, scripts)
-  - [ ] Filename path traversal (../../etc/passwd)
-  - [ ] XXE attacks in XML files
-  - [ ] Zip bomb detection
-  - [ ] SSRF via file URLs
-  - [ ] Tenant isolation (can't access other tenant's files)
-  - [ ] Large file DoS (quota enforcement)
+- [x] Unit tests:
+  - [x] File type validation (magic bytes)
+  - [x] Quota enforcement
+  - [x] Path traversal prevention
+  - [x] S3 key generation
+  - [x] Thumbnail generation
+- [x] Integration tests:
+  - [x] Full upload → scan → download flow
+  - [x] Quota exceeded scenario
+  - [x] Presigned URL generation and usage
+  - [x] Virus detection (mock ClamAV)
+- [x] Security tests:
+  - [x] Upload malicious file types (executables, scripts)
+  - [x] Filename path traversal (../../etc/passwd)
+  - [x] XXE attacks in XML files
+  - [x] Zip bomb detection
+  - [x] SSRF via file URLs
+  - [x] Tenant isolation (can't access other tenant's files)
+  - [x] Large file DoS (quota enforcement)
 
 ### 2.4.12 Documentation
-- [ ] `README.md` — architecture, MinIO setup, virus scanning setup
-- [ ] `libs/contracts/file-service.yaml` — OpenAPI spec
-- [ ] Client-side upload guide (using presigned URLs)
-- [ ] Supported file types documentation
-- [ ] Quota management guide
+- [x] `README.md` — architecture, MinIO setup, virus scanning setup
+- [x] `libs/contracts/file-service.yaml` — OpenAPI spec
+- [x] Client-side upload guide (using presigned URLs)
+- [x] Supported file types documentation
+- [x] Quota management guide
 
 ---
 
@@ -1066,8 +1066,8 @@ Bring all Phase 2 services together with Phase 1 core platform.
 ### 2.6.1 Compose Stack (partial — Track B services done)
 - [x] Update `deploy/podman/compose.services.yml`:
   - [x] Add `notification-service` container (port 8082)
-  - [ ] Add `billing-service` container (port 8083)
-  - [ ] Add `file-service` container (port 8084)
+  - [x] Add `billing-service` container (port 8083)
+  - [x] Add `file-service` container (port 8084)
   - [x] Add `audit-service` container (port 8085)
   - [x] Configure service dependencies (wait for DB, Redis)
   - [x] Apply security hardening (cap_drop ALL, no-new-privileges, mem_limit, cpus)
@@ -1077,20 +1077,20 @@ Bring all Phase 2 services together with Phase 1 core platform.
   - [x] Gateway depends on notification-service and audit-service (service_healthy)
   - [x] Gateway env vars: NOTIFICATION_BASE_URL, AUDIT_BASE_URL
 - [x] Update `deploy/podman/prometheus/prometheus.yml` — per-service scrape targets
-- [ ] Update `.env.example` with Billing/File service environment variables
-- [ ] Add ClamAV to `deploy/podman/compose.base.yml`
+- [x] Update `.env.example` with Billing/File service environment variables
+- [x] Add ClamAV to `deploy/podman/compose.base.yml`
 - [x] Verify containers start and all healthchecks pass
 
 ### 2.6.2 API Gateway Integration (partial — Track B services done)
 - [x] Update API Gateway to proxy Track B services:
   - [x] `/api/v1/notifications/*` → notification-service:8082
-  - [ ] `/api/v1/billing/*` → billing-service:8083
-  - [ ] `/api/v1/files/*` → file-service:8084
+  - [x] `/api/v1/billing/*` → billing-service:8083
+  - [x] `/api/v1/files/*` → file-service:8084
   - [x] `/api/v1/audit/*` → audit-service:8085
 - [x] Gateway config: `notificationBaseUrl`, `auditBaseUrl` (optional, dynamic availability)
 - [x] Module gating routes updated for notification and audit prefixes
-- [ ] Add service health checks to Gateway aggregated health endpoint (Track A)
-- [ ] Update rate limits (per-service tiers)
+- [x] Add service health checks to Gateway aggregated health endpoint (Track A)
+- [x] Update rate limits (per-service tiers)
 
 ### 2.6.3 Makefile Updates (partial — Track B targets done)
 - [x] Add targets:

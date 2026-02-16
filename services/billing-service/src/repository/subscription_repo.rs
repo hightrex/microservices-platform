@@ -108,6 +108,22 @@ pub async fn cancel(
     .map_err(|e| AppError::database_error("Failed to cancel subscription").with_source(e))
 }
 
+/// Get subscription by Stripe subscription ID (for webhook processing).
+pub async fn get_by_stripe_id(
+    pool: &PgPool,
+    stripe_subscription_id: &str,
+    tenant_id: Uuid,
+) -> Result<Option<Subscription>, AppError> {
+    sqlx::query_as::<_, Subscription>(
+        "SELECT * FROM subscriptions WHERE stripe_subscription_id = $1 AND tenant_id = $2",
+    )
+    .bind(stripe_subscription_id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::database_error("Failed to get subscription by Stripe ID").with_source(e))
+}
+
 /// Update the plan for a subscription (upgrade/downgrade).
 pub async fn update_plan(
     pool: &PgPool,

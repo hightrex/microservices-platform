@@ -59,16 +59,36 @@ func RegisterRoutes(
 		// User management routes
 		users := protected.Group("/users")
 		{
-			users.GET("", userHandler.List)
+			// Listing users requires admin privileges
+			users.GET("",
+				authmw.RequireRole("org_owner", "org_admin"),
+				userHandler.List,
+			)
+			// Any authenticated user can view their own profile; admins can view others
 			users.GET("/:id", userHandler.GetByID)
-			users.PUT("/:id", userHandler.Update)
-			users.DELETE("/:id", userHandler.Delete)
+			// Update and delete: self-only or org_admin/org_owner
+			users.PUT("/:id",
+				authmw.SelfOrRole("org_owner", "org_admin"),
+				userHandler.Update,
+			)
+			users.DELETE("/:id",
+				authmw.RequireRole("org_owner", "org_admin"),
+				userHandler.Delete,
+			)
 			users.PUT("/:id/role",
 				authmw.RequireRole("org_owner", "org_admin"),
 				userHandler.AssignRole,
 			)
-			users.GET("/:id/sessions", userHandler.ListSessions)
-			users.PUT("/:id/password", userHandler.ChangePassword)
+			// Sessions: self-only or admin
+			users.GET("/:id/sessions",
+				authmw.SelfOrRole("org_owner", "org_admin"),
+				userHandler.ListSessions,
+			)
+			// Password change: self-only (users change their own password)
+			users.PUT("/:id/password",
+				authmw.SelfOrRole("org_owner", "org_admin"),
+				userHandler.ChangePassword,
+			)
 		}
 	}
 }

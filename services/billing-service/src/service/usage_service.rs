@@ -17,6 +17,7 @@ pub async fn record_usage(
     tenant_ctx: &TenantContext,
     metric_name: &str,
     quantity: i64,
+    user_id: Uuid,
 ) -> Result<UsageRecord, AppError> {
     // Get the tenant's active subscription
     let subscription = subscription_repo::get_by_tenant(pool, tenant_ctx.tenant_id)
@@ -38,18 +39,22 @@ pub async fn record_usage(
     let recorded = usage_repo::record(pool, &usage).await?;
 
     // Publish event
-    let _ = producer
+    if let Err(e) = producer
         .publish(
             streams::BILLING_EVENTS,
             event_types::USAGE_RECORDED,
             tenant_ctx.tenant_id,
             serde_json::json!({
+                "user_id": user_id,
                 "metric_name": metric_name,
                 "quantity": quantity,
                 "subscription_id": subscription.id,
             }),
         )
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, metric_name = %metric_name, "Failed to publish usage.recorded event");
+    }
 
     Ok(recorded)
 }

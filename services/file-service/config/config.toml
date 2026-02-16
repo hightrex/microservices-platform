@@ -44,3 +44,6 @@ allowed_content_types = [
     "application/json",
     "application/zip",
 ]
+
+[auth]
+jwt_secret = "${APP_AUTH__JWT_SECRET}"

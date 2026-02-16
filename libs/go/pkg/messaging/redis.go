@@ -50,6 +50,13 @@ func (p *Producer) Publish(ctx context.Context, stream string, eventType string,
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
+	// Propagate correlation ID from request context for distributed tracing;
+	// fall back to a new UUID if none is set.
+	correlationID := tenant.CorrelationIDFromContext(ctx)
+	if correlationID == "" {
+		correlationID = uuid.New().String()
+	}
+
 	event := Event{
 		ID:        uuid.New().String(),
 		Type:      eventType,
@@ -59,7 +66,7 @@ func (p *Producer) Publish(ctx context.Context, stream string, eventType string,
 		Data:      bytes,
 		Timestamp: time.Now(),
 		Metadata: Metadata{
-			CorrelationID: uuid.New().String(),
+			CorrelationID: correlationID,
 		},
 	}
 

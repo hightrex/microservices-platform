@@ -9,6 +9,7 @@ use axum::{
 };
 use platform_common::{health, metrics};
 use platform_messaging::producer::Producer;
+use platform_middleware::auth::{self, AuthConfig, UserContext};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -21,9 +22,10 @@ pub struct AppState {
     pub s3_config: S3Config,
     pub quota_config: QuotaConfig,
     pub upload_config: UploadConfig,
+    pub auth_config: AuthConfig,
 }
 
-/// Extract TenantContext from request extensions.
+/// Extract TenantContext from request extensions (set by auth middleware).
 impl axum::extract::FromRequestParts<AppState> for platform_common::tenant::TenantContext {
     type Rejection = platform_common::error::AppError;
 
@@ -41,21 +43,71 @@ impl axum::extract::FromRequestParts<AppState> for platform_common::tenant::Tena
     }
 }
 
+/// Extract UserContext from request extensions (set by auth middleware).
+impl axum::extract::FromRequestParts<AppState> for UserContext {
+    type Rejection = platform_common::error::AppError;
+
+    async fn from_request_parts(
+        parts: &mut http::request::Parts,
+        _state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        parts
+            .extensions
+            .get::<UserContext>()
+            .cloned()
+            .ok_or_else(|| {
+                platform_common::error::AppError::unauthorized("Authentication required")
+            })
+    }
+}
+
+/// RBAC layer: require authenticated user with write roles for upload/delete.
+async fn require_file_write_roles(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
+    auth::require_roles(
+        vec![
+            "admin".to_string(),
+            "super_admin".to_string(),
+            "org_owner".to_string(),
+            "org_admin".to_string(),
+            "member".to_string(),
+        ],
+        request,
+        next,
+    )
+    .await
+}
+
 pub fn create_router(state: AppState, cfg: &crate::config::FileServiceConfig) -> Router {
+    let auth_cfg = state.auth_config.clone();
+
     let public_routes = Router::new()
         .route("/health", get(health_handler))
         .route("/metrics", get(metrics_handler));
 
-    let protected_routes = Router::new()
-        .route("/api/v1/files/upload", post(file_handler::upload_file))
+    // Read-only routes (any authenticated user)
+    let read_routes = Router::new()
         .route("/api/v1/files", get(file_handler::list_files))
         .route(
             "/api/v1/files/{id}",
-            get(file_handler::get_file).delete(file_handler::delete_file),
+            get(file_handler::get_file),
         )
-        .route("/api/v1/files/quota", get(quota_handler::get_quota))
-        .layer(middleware::from_fn(
-            platform_middleware::tenant::require_tenant_middleware,
+        .route("/api/v1/files/quota", get(quota_handler::get_quota));
+
+    // Write routes (require file write roles)
+    let write_routes = Router::new()
+        .route("/api/v1/files/upload", post(file_handler::upload_file))
+        .route(
+            "/api/v1/files/{id}",
+            axum::routing::delete(file_handler::delete_file),
+        )
+        .layer(middleware::from_fn(require_file_write_roles));
+
+    let protected_routes = Router::new()
+        .merge(read_routes)
+        .merge(write_routes)
+        .layer(middleware::from_fn_with_state(
+            auth_cfg,
+            auth::auth_middleware,
         ));
 
     let cors_layer = platform_middleware::cors::create_cors_layer(&cfg.server.cors_origins);

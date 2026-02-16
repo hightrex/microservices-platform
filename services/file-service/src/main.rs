@@ -56,6 +56,10 @@ async fn main() -> anyhow::Result<()> {
 
     let metrics_registry = metrics::MetricsRegistry::new("files");
 
+    // Build auth configuration for JWT validation
+    let auth_config =
+        platform_middleware::auth::AuthConfig::new(&cfg.auth.jwt_secret);
+
     let app_state = routes::AppState {
         db_pool: db_pool.clone(),
         producer: Arc::new(producer),
@@ -64,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
         s3_config: cfg.s3.clone(),
         quota_config: cfg.quota.clone(),
         upload_config: cfg.upload.clone(),
+        auth_config,
     };
 
     let app = routes::create_router(app_state, &cfg);

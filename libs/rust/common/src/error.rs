@@ -22,7 +22,7 @@ use serde::Serialize;
 /// Standardized error codes matching the Go shared library.
 pub mod codes {
     pub const BAD_REQUEST: &str = "BAD_REQUEST";
-    pub const VALIDATION_ERROR: &str = "VALIDATION_ERROR";
+    pub const VALIDATION_FAILED: &str = "VALIDATION_FAILED";
     pub const UNAUTHORIZED: &str = "UNAUTHORIZED";
     pub const FORBIDDEN: &str = "FORBIDDEN";
     pub const RESOURCE_NOT_FOUND: &str = "RESOURCE_NOT_FOUND";
@@ -129,7 +129,7 @@ impl AppError {
     }
 
     pub fn validation_error(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::BAD_REQUEST, codes::VALIDATION_ERROR, message)
+        Self::new(StatusCode::BAD_REQUEST, codes::VALIDATION_FAILED, message)
     }
 
     pub fn unauthorized(message: impl Into<String>) -> Self {

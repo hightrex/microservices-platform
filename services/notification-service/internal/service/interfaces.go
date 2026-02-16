@@ -39,6 +39,13 @@ type DeliveryRepository interface {
 	Create(ctx context.Context, log *models.DeliveryLog) error
 	List(ctx context.Context, notificationID uuid.UUID) ([]models.DeliveryLog, error)
 	GetFailedDeliveries(ctx context.Context, maxRetries int) ([]models.DeliveryLog, error)
+	IncrementRetryCount(ctx context.Context, id uuid.UUID) error
+	UpdateStatus(ctx context.Context, id uuid.UUID, status models.DeliveryStatus) error
+}
+
+// DLQRepository defines the interface for dead-letter queue data access.
+type DLQRepository interface {
+	Insert(ctx context.Context, tenantID uuid.UUID, eventType string, payload []byte, errMsg string) error
 }
 
 // TemplateCache defines the interface for Redis-based template caching.

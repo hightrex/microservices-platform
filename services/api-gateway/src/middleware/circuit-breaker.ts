@@ -21,10 +21,13 @@ export function createCircuitBreakerRegistry(config: GatewayConfig): CircuitBrea
       try {
         const response = await fetch(`${baseUrl}/health`, { signal: controller.signal });
         clearTimeout(timer);
-        return response.ok;
-      } catch {
+        if (!response.ok) {
+          throw new Error(`Health check failed: HTTP ${response.status}`);
+        }
+        return true;
+      } catch (err) {
         clearTimeout(timer);
-        return false;
+        throw err;
       }
     };
   }

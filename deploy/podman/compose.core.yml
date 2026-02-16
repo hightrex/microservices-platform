@@ -211,6 +211,7 @@ services:
       - APP_STRIPE__WEBHOOK_SECRET=whsec_placeholder
       - APP_STRIPE__PUBLISHABLE_KEY=pk_test_placeholder
       - APP_STRIPE__TEST_MODE=true
+      - APP_AUTH__JWT_SECRET=dev-secret-change-in-production-minimum-32-chars!
       - APP_LOGGER__LEVEL=debug
       - APP_LOGGER__ENVIRONMENT=dev
     networks:
@@ -261,6 +262,7 @@ services:
       - APP_S3__ACCESS_KEY=minioadmin
       - APP_S3__SECRET_KEY=minioadmin
       - APP_S3__BUCKET_PREFIX=platform
+      - APP_AUTH__JWT_SECRET=dev-secret-change-in-production-minimum-32-chars!
       - APP_LOGGER__LEVEL=debug
       - APP_LOGGER__ENVIRONMENT=dev
     networks:

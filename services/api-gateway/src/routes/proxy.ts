@@ -3,6 +3,7 @@ import { createProxyMiddleware, type Options as ProxyOptions } from "http-proxy-
 import { ERROR_CODES, IDENTITY_HEADERS, logger } from "@microservices-platform/shared";
 import type { GatewayConfig } from "../config";
 import type { CircuitBreakerRegistry } from "../middleware/circuit-breaker";
+import { circuitOpenResponse } from "../middleware/circuit-breaker";
 
 /** Hop-by-hop headers that must NOT be forwarded. */
 const HOP_BY_HOP = new Set([
@@ -22,7 +23,7 @@ const HOP_BY_HOP = new Set([
 function buildProxyOptions(
   serviceName: string,
   target: string,
-  _cbRegistry: CircuitBreakerRegistry,
+  cbRegistry: CircuitBreakerRegistry,
 ): ProxyOptions {
   return {
     target,
@@ -85,10 +86,20 @@ function buildProxyOptions(
       },
       error(err, _req, res) {
         logger.error({ service: serviceName, err: err.message }, "Proxy error");
+
+        // Run the health check via the circuit breaker so it can record
+        // failures and eventually trip open when the service is unreachable.
+        const breaker = cbRegistry.get(serviceName);
+        if (breaker && !breaker.opened) {
+          breaker.fire().catch(() => {
+            // Health check failed — recorded as a failure in the breaker
+          });
+        }
+
         if (res && "writeHead" in res && typeof res.writeHead === "function") {
           const httpRes = res as import("http").ServerResponse;
           if (!httpRes.headersSent) {
-            httpRes.writeHead(502);
+            httpRes.writeHead(502, { "Content-Type": "application/json" });
             httpRes.end(
               JSON.stringify({
                 success: false,
@@ -174,7 +185,18 @@ export function registerProxyRoutes(
     }
 
     // Register circuit breaker for the service
-    cbRegistry.register(route.serviceName, route.target);
+    const breaker = cbRegistry.register(route.serviceName, route.target);
+
+    // Circuit breaker guard middleware — reject requests when circuit is open
+    const cbGuard: import("express").RequestHandler = (_req, res, next) => {
+      if (breaker.opened) {
+        logger.warn({ service: route.serviceName }, "Circuit breaker open — returning 503");
+        res.status(503).json(circuitOpenResponse(route.serviceName));
+        return;
+      }
+      next();
+    };
+    middlewares.push(cbGuard);
 
     // Create proxy middleware
     const proxyOptions = buildProxyOptions(route.serviceName, route.target, cbRegistry);

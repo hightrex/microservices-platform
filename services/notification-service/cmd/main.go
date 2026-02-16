@@ -144,13 +144,16 @@ func main() {
 	// Subscribe to events from other services
 	consumerManager.RegisterHandler("auth-events", "user.created", eventConsumer.HandleUserCreated)
 	consumerManager.RegisterHandler("org-events", "org.created", eventConsumer.HandleOrgCreated)
+	consumerManager.RegisterHandler("billing-events", "*", eventConsumer.HandleBillingEvent)
+	consumerManager.RegisterHandler("file-events", "*", eventConsumer.HandleFileEvent)
 
 	if err := consumerManager.Start(ctx); err != nil {
 		logger.Error().Err(err).Msg("Failed to start event consumer")
 	}
 
 	// 14. Start retry worker (background)
-	retryWorker := service.NewRetryWorker(deliveryRepo, notifSvc, 5)
+	dlqRepo := postgres.NewDLQRepo(pool)
+	retryWorker := service.NewRetryWorker(deliveryRepo, notifRepo, dlqRepo, notifSvc, 5)
 	retryCtx, retryCancel := context.WithCancel(ctx)
 	defer retryCancel()
 	go retryWorker.Start(retryCtx)

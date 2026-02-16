@@ -40,8 +40,11 @@ func RegisterRoutes(
 	// Organization routes
 	orgs := v1.Group("/organizations")
 	{
-		// Any authenticated user can create an org
-		orgs.POST("", orgHandler.Create)
+		// Org creation requires admin role to prevent unbounded org proliferation
+		orgs.POST("",
+			authmw.RequireRole("org_owner", "org_admin", "admin", "super_admin"),
+			orgHandler.Create,
+		)
 
 		// Org-specific routes (scoped by tenant context)
 		org := orgs.Group("/:id")

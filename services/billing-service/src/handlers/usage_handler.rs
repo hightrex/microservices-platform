@@ -1,13 +1,16 @@
 //! Usage HTTP handlers.
 
 use crate::models::usage::RecordUsageRequest;
+use crate::repository::{plan_repo, subscription_repo};
 use crate::routes::AppState;
 use crate::service::usage_service;
 use axum::{extract::{Query, State}, http::StatusCode, response::IntoResponse, Json};
 use platform_common::error::AppError;
 use platform_common::tenant::TenantContext;
 use platform_common::validation::validate_request;
+use platform_middleware::auth::UserContext;
 use serde::Deserialize;
+use uuid::Uuid;
 
 /// Usage query parameters.
 #[derive(Debug, Deserialize)]
@@ -36,8 +39,20 @@ pub async fn get_quota_status(
     tenant_ctx: TenantContext,
     Query(query): Query<UsageQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Default limit; in production, this would come from the plan's features
-    let limit = 10000;
+    // Look up the tenant's plan to get the quota limit from features
+    let limit = match subscription_repo::get_by_tenant(&state.db_pool, tenant_ctx.tenant_id).await? {
+        Some(sub) => {
+            match plan_repo::get_by_id(&state.db_pool, sub.plan_id).await? {
+                Some(plan) => plan
+                    .features
+                    .get("usage_limit")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(10_000),
+                None => 10_000,
+            }
+        }
+        None => 10_000,
+    };
     let quota = usage_service::get_quota_status(
         &state.db_pool,
         &tenant_ctx,
@@ -56,9 +71,13 @@ pub async fn get_quota_status(
 pub async fn record_usage(
     State(state): State<AppState>,
     tenant_ctx: TenantContext,
+    user_ctx: UserContext,
     Json(req): Json<RecordUsageRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     validate_request(&req)?;
+
+    let user_id = Uuid::parse_str(&user_ctx.user_id)
+        .map_err(|_| AppError::bad_request("Invalid user ID in authentication token"))?;
 
     let usage = usage_service::record_usage(
         &state.db_pool,
@@ -66,6 +85,7 @@ pub async fn record_usage(
         &tenant_ctx,
         &req.metric_name,
         req.quantity,
+        user_id,
     )
     .await?;
 

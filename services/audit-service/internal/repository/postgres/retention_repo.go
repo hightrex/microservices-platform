@@ -110,6 +110,33 @@ func (r *RetentionRepo) List(ctx context.Context) ([]models.RetentionPolicy, err
 	return policies, nil
 }
 
+// ListAllActive returns all active retention policies across all tenants.
+// This is used by the background retention worker which runs outside any tenant context.
+func (r *RetentionRepo) ListAllActive(ctx context.Context) ([]models.RetentionPolicy, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id, tenant_id, event_type, retention_days, is_active, created_at, updated_at
+		 FROM retention_policies WHERE is_active = true ORDER BY tenant_id, event_type`,
+	)
+	if err != nil {
+		return nil, errors.InternalServerError("Failed to list all active retention policies", err)
+	}
+	defer rows.Close()
+
+	var policies []models.RetentionPolicy
+	for rows.Next() {
+		var p models.RetentionPolicy
+		if err := rows.Scan(
+			&p.ID, &p.TenantID, &p.EventType, &p.RetentionDays,
+			&p.IsActive, &p.CreatedAt, &p.UpdatedAt,
+		); err != nil {
+			return nil, errors.InternalServerError("Failed to scan retention policy", err)
+		}
+		policies = append(policies, p)
+	}
+
+	return policies, nil
+}
+
 // Update performs a partial update on a retention policy.
 func (r *RetentionRepo) Update(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error {
 	tenantID, err := tenant.RequireTenant(ctx)

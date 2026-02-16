@@ -16,6 +16,7 @@ pub async fn create_subscription(
     producer: &Arc<Producer>,
     tenant_ctx: &TenantContext,
     plan_id: Uuid,
+    user_id: Uuid,
 ) -> Result<Subscription, AppError> {
     // Validate plan exists
     let plan = plan_repo::get_by_id(pool, plan_id)
@@ -39,9 +40,16 @@ pub async fn create_subscription(
     }
 
     let now = chrono::Utc::now();
+    // Use calendar-month/year arithmetic to avoid billing date drift.
     let period_end = match plan.billing_interval {
-        crate::models::plan::BillingInterval::Month => now + chrono::Duration::days(30),
-        crate::models::plan::BillingInterval::Year => now + chrono::Duration::days(365),
+        crate::models::plan::BillingInterval::Month => {
+            now.checked_add_months(chrono::Months::new(1))
+                .unwrap_or(now + chrono::Duration::days(30))
+        }
+        crate::models::plan::BillingInterval::Year => {
+            now.checked_add_months(chrono::Months::new(12))
+                .unwrap_or(now + chrono::Duration::days(365))
+        }
     };
 
     let subscription = Subscription {
@@ -63,19 +71,23 @@ pub async fn create_subscription(
     let created = subscription_repo::create(pool, &subscription).await?;
 
     // Publish event
-    let _ = producer
+    if let Err(e) = producer
         .publish(
             streams::BILLING_EVENTS,
             event_types::SUBSCRIPTION_CREATED,
             tenant_ctx.tenant_id,
             serde_json::json!({
                 "subscription_id": created.id,
+                "user_id": user_id,
                 "plan_id": plan_id,
                 "plan_name": plan.name,
                 "status": "active",
             }),
         )
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, subscription_id = %created.id, "Failed to publish subscription.created event");
+    }
 
     tracing::info!(
         subscription_id = %created.id,
@@ -102,6 +114,7 @@ pub async fn change_plan(
     tenant_ctx: &TenantContext,
     new_plan_id: Uuid,
     _immediate: bool,
+    user_id: Uuid,
 ) -> Result<Subscription, AppError> {
     let subscription = subscription_repo::get_by_tenant(pool, tenant_ctx.tenant_id)
         .await?
@@ -125,19 +138,23 @@ pub async fn change_plan(
             .await?;
 
     // Publish event
-    let _ = producer
+    if let Err(e) = producer
         .publish(
             streams::BILLING_EVENTS,
             event_types::SUBSCRIPTION_UPDATED,
             tenant_ctx.tenant_id,
             serde_json::json!({
                 "subscription_id": updated.id,
+                "user_id": user_id,
                 "old_plan_id": subscription.plan_id,
                 "new_plan_id": new_plan_id,
                 "plan_name": new_plan.name,
             }),
         )
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, subscription_id = %updated.id, "Failed to publish subscription.updated event");
+    }
 
     Ok(updated)
 }
@@ -148,6 +165,7 @@ pub async fn cancel_subscription(
     producer: &Arc<Producer>,
     tenant_ctx: &TenantContext,
     immediate: bool,
+    user_id: Uuid,
 ) -> Result<Subscription, AppError> {
     let subscription = subscription_repo::get_by_tenant(pool, tenant_ctx.tenant_id)
         .await?
@@ -157,18 +175,22 @@ pub async fn cancel_subscription(
         subscription_repo::cancel(pool, subscription.id, tenant_ctx.tenant_id, immediate).await?;
 
     // Publish event
-    let _ = producer
+    if let Err(e) = producer
         .publish(
             streams::BILLING_EVENTS,
             event_types::SUBSCRIPTION_CANCELED,
             tenant_ctx.tenant_id,
             serde_json::json!({
                 "subscription_id": canceled.id,
+                "user_id": user_id,
                 "immediate": immediate,
                 "cancel_at": canceled.cancel_at,
             }),
         )
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, subscription_id = %canceled.id, "Failed to publish subscription.canceled event");
+    }
 
     tracing::info!(
         subscription_id = %canceled.id,
@@ -183,25 +205,64 @@ pub async fn cancel_subscription(
 /// Pause a subscription.
 pub async fn pause_subscription(
     pool: &PgPool,
+    producer: &Arc<Producer>,
     tenant_ctx: &TenantContext,
+    user_id: Uuid,
 ) -> Result<Subscription, AppError> {
     let subscription = subscription_repo::get_by_tenant(pool, tenant_ctx.tenant_id)
         .await?
         .ok_or_else(|| AppError::not_found("No active subscription found"))?;
 
-    subscription_repo::update_status(
+    // Only active or trialing subscriptions can be paused
+    if !matches!(
+        subscription.status,
+        SubscriptionStatus::Active | SubscriptionStatus::Trialing
+    ) {
+        return Err(AppError::bad_request(format!(
+            "Cannot pause subscription with status '{:?}'. Only active or trialing subscriptions can be paused.",
+            subscription.status
+        )));
+    }
+
+    let paused = subscription_repo::update_status(
         pool,
         subscription.id,
         tenant_ctx.tenant_id,
         SubscriptionStatus::Paused,
     )
-    .await
+    .await?;
+
+    if let Err(e) = producer
+        .publish(
+            streams::BILLING_EVENTS,
+            event_types::SUBSCRIPTION_PAUSED,
+            tenant_ctx.tenant_id,
+            serde_json::json!({
+                "subscription_id": paused.id,
+                "user_id": user_id,
+                "previous_status": format!("{:?}", subscription.status),
+            }),
+        )
+        .await
+    {
+        tracing::error!(error = %e, subscription_id = %paused.id, "Failed to publish subscription.paused event");
+    }
+
+    tracing::info!(
+        subscription_id = %paused.id,
+        tenant_id = %tenant_ctx.tenant_id,
+        "Subscription paused"
+    );
+
+    Ok(paused)
 }
 
 /// Resume a paused subscription.
 pub async fn resume_subscription(
     pool: &PgPool,
+    producer: &Arc<Producer>,
     tenant_ctx: &TenantContext,
+    user_id: Uuid,
 ) -> Result<Subscription, AppError> {
     let subscription = subscription_repo::get_by_tenant(pool, tenant_ctx.tenant_id)
         .await?
@@ -211,11 +272,34 @@ pub async fn resume_subscription(
         return Err(AppError::bad_request("Subscription is not paused"));
     }
 
-    subscription_repo::update_status(
+    let resumed = subscription_repo::update_status(
         pool,
         subscription.id,
         tenant_ctx.tenant_id,
         SubscriptionStatus::Active,
     )
-    .await
+    .await?;
+
+    if let Err(e) = producer
+        .publish(
+            streams::BILLING_EVENTS,
+            event_types::SUBSCRIPTION_RESUMED,
+            tenant_ctx.tenant_id,
+            serde_json::json!({
+                "subscription_id": resumed.id,
+                "user_id": user_id,
+            }),
+        )
+        .await
+    {
+        tracing::error!(error = %e, subscription_id = %resumed.id, "Failed to publish subscription.resumed event");
+    }
+
+    tracing::info!(
+        subscription_id = %resumed.id,
+        tenant_id = %tenant_ctx.tenant_id,
+        "Subscription resumed"
+    );
+
+    Ok(resumed)
 }

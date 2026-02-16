@@ -13,6 +13,14 @@ pub struct BillingConfig {
     pub stripe: StripeConfig,
     pub logger: LoggerConfig,
     pub invoice: InvoiceConfig,
+    pub auth: AuthenticationConfig,
+}
+
+/// Authentication configuration for JWT validation.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AuthenticationConfig {
+    /// JWT signing secret (shared with auth-service).
+    pub jwt_secret: String,
 }
 
 /// Stripe integration configuration.

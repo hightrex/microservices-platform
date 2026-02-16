@@ -36,3 +36,6 @@ environment = "local"
 [invoice]
 due_days = 30
 late_fee_percentage = 1.5
+
+[auth]
+jwt_secret = "${APP_AUTH__JWT_SECRET}"

@@ -1,8 +1,8 @@
 # Microservices Platform — Project Tracker
 
-> **Last updated:** 2026-02-15 (Phase 2 Track B complete)
+> **Last updated:** 2026-02-16 (Phase 2 Track A & B complete)
 > **Total services:** 8 | **Phases:** 4 | **Target:** ~26 weeks
-> **Current phase:** Phase 2 — Modular Services (Track B complete, Track A pending)
+> **Current phase:** Phase 2 — Modular Services (Code Complete, Security Pending)
 
 ---
 
@@ -284,10 +284,10 @@ Before scaffolding, verify these are installed. Run each command to check.
 ## Phase 2: Modular Services (Week 11-18) — Track B Complete
 
 ### 2.1 Shared Rust Crate (`libs/rust/`)
-- [ ] Initialize Cargo workspace
-- [ ] `common/` — error types, config, logging
-- [ ] `messaging/` — Redis Streams for Rust
-- [ ] Tests
+- [x] Initialize Cargo workspace
+- [x] `common/` — error types, config, logging
+- [x] `messaging/` — Redis Streams for Rust
+- [x] Tests
 
 ### 2.2 Notification Service (Go/Gin — Port 8082) ✅
 - [x] Scaffold, config, migrations (5 tables: templates, preferences, notifications, delivery_log, dlq)
@@ -307,17 +307,17 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] Containerfile (Go 1.25-alpine, non-root, healthcheck), unit tests, README
 - [x] Container verified healthy, endpoints tested end-to-end
 
-### 2.3 Billing Service (Rust/Axum — Port 8083)
-- [ ] Scaffold
-- [ ] Migrations: subscriptions, invoices, payments, usage
-- [ ] Stripe integration, usage metering, proration logic
-- [ ] Containerfile, tests, OpenAPI spec, README
+### 2.3 Billing Service (Rust/Axum — Port 8083) ✅
+- [x] Scaffold
+- [x] Migrations: subscriptions, invoices, payments, usage
+- [x] Stripe integration, usage metering, proration logic
+- [x] Containerfile, tests, OpenAPI spec, README
 
-### 2.4 File Service (Rust/Axum — Port 8084)
-- [ ] Scaffold
-- [ ] Migrations: file metadata, storage quotas, access log
-- [ ] MinIO (S3) integration, quota enforcement, signed URLs
-- [ ] Containerfile, tests, OpenAPI spec, README
+### 2.4 File Service (Rust/Axum — Port 8084) ✅
+- [x] Scaffold
+- [x] Migrations: file metadata, storage quotas, access log
+- [x] MinIO (S3) integration, quota enforcement, signed URLs
+- [x] Containerfile, tests, OpenAPI spec, README
 
 ### 2.5 Audit Service (Go/Gin — Port 8085) ✅
 - [x] Scaffold, config, migrations (3 tables: audit_logs with immutability trigger, retention_policies, exports)
@@ -335,14 +335,14 @@ Before scaffolding, verify these are installed. Run each command to check.
 - [x] Containerfile (Go 1.25-alpine, non-root, healthcheck), unit tests, README
 - [x] Container verified healthy, 4 audit entries captured from event streams
 
-### 2.6 Phase 2 Integration (partial — Track B done)
-- [x] `deploy/podman/compose.services.yml` — notification + audit added
-- [x] `deploy/podman/compose.core.yml` — notification + audit added (internal only)
-- [x] API Gateway routing activated for `/api/v1/notifications/*` and `/api/v1/audit/*`
+### 2.6 Phase 2 Integration (Complete) ✅
+- [x] `deploy/podman/compose.services.yml` — notification, audit, billing, file added
+- [x] `deploy/podman/compose.core.yml` — gateway routing + internal services
+- [x] API Gateway routing activated for all Phase 2 services
 - [x] Prometheus scrape targets for all services
-- [x] Makefile: `test-notification`, `test-audit`, `test-go`, `services-up-notification`, `services-up-audit`
-- [x] All 5 containers healthy (auth, org, notification, audit, gateway)
-- [ ] Integration tests across all services (after Track A)
+- [x] Makefile targets added for all services and languages (Go/Rust/TS)
+- [x] All 7 containers healthy (auth, org, notification, audit, billing, file, gateway)
+- [ ] Integration tests across all services (pending)
 - [ ] Module gating verified for billing and file services
 
 ### 2.7 Phase 2 Security (deferred to after all services complete)
@@ -432,7 +432,7 @@ Before scaffolding, verify these are installed. Run each command to check.
 |-----------|--------|-------------|
 | **M0: Foundation Ready** | Week 2 | Shared libs compile, infra runs, rules written | ✅ Done |
 | **M1: Core Platform MVP** | Week 10 | Auth + Org + Gateway working, tenant isolation proven | ✅ Done |
-| **M2: Full Module Suite** | Week 18 | All 8 services running, module gating working | 🟡 Track B done |
+| **M2: Full Module Suite** | Week 18 | All 8 services running, module gating working | 🟡 Code Done |
 | **M3: Production Ready** | Week 26 | Frontend, K8s, security audit, documentation complete | Pending |
 
 ---
@@ -445,7 +445,7 @@ Phase 0: libs/go (no service dependencies)                          ✅ DONE
 Phase 1: Auth → Organization → Gateway (each depends on previous)   ✅ DONE
     ↓
 Phase 2: Track B — Notification + Audit (Go, no Rust dependency)    ✅ DONE
-         Track A — libs/rust → Billing + File (Rust/Axum)           ⬜ PENDING
+         Track A — libs/rust → Billing + File (Rust/Axum)           ✅ DONE
     ↓
 Phase 3: Analytics (depends on events from all services)            ⬜ PENDING
          Frontend (depends on all service APIs)                     ⬜ PENDING

@@ -110,3 +110,52 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 		})
 	}
 }
+
+// SelfOrRole returns middleware that allows access if the authenticated user is acting
+// on their own resource (matching :id param) OR if they have one of the specified roles.
+func SelfOrRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("user_id")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error":   gin.H{"code": "FORBIDDEN", "message": "Authentication context missing"},
+			})
+			return
+		}
+
+		// Check if the user is accessing their own resource
+		pathID := c.Param("id")
+		if pathID != "" && userID.(string) == pathID {
+			c.Next()
+			return
+		}
+
+		// Fall back to role check
+		userRoles, exists := c.Get("roles")
+		if exists {
+			roleList, ok := userRoles.([]string)
+			if ok {
+				for _, required := range roles {
+					for _, userRole := range roleList {
+						if required == userRole {
+							c.Next()
+							return
+						}
+					}
+				}
+			}
+		}
+
+		securitylog.LogFailure(c.Request.Context(), securitylog.EventPermissionDenied, c.ClientIP(), c.Request.URL.Path, map[string]interface{}{
+			"required": "self or roles",
+			"user_id":  userID,
+			"path_id":  pathID,
+		})
+
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "FORBIDDEN", "message": "Insufficient permissions"},
+		})
+	}
+}

@@ -291,3 +291,33 @@ func (r *AuditRepo) GetStatistics(ctx context.Context, tenantID uuid.UUID) (*mod
 
 	return stats, nil
 }
+
+// PurgeExpiredByEventType deletes audit logs older than the given cutoff date
+// for a specific event type and tenant. Used exclusively by the retention enforcement worker.
+// Runs inside a transaction with a session variable to bypass the immutability trigger.
+func (r *AuditRepo) PurgeExpiredByEventType(ctx context.Context, tenantID uuid.UUID, eventType string, olderThan time.Time) (int64, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, errors.InternalServerError("Failed to begin purge transaction", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Enable the retention bypass flag for this transaction only
+	if _, err := tx.Exec(ctx, "SET LOCAL app.retention_purge = 'true'"); err != nil {
+		return 0, errors.InternalServerError("Failed to set retention purge flag", err)
+	}
+
+	tag, err := tx.Exec(ctx,
+		`DELETE FROM audit_logs WHERE tenant_id = $1 AND event_type = $2 AND timestamp < $3`,
+		tenantID, eventType, olderThan,
+	)
+	if err != nil {
+		return 0, errors.InternalServerError("Failed to purge expired audit logs", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, errors.InternalServerError("Failed to commit purge transaction", err)
+	}
+
+	return tag.RowsAffected(), nil
+}

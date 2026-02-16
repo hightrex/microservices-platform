@@ -117,10 +117,18 @@ func main() {
 	consumerManager.RegisterHandler("auth-events", "*", eventConsumer.HandleAllEvents)
 	consumerManager.RegisterHandler("org-events", "*", eventConsumer.HandleAllEvents)
 	consumerManager.RegisterHandler("notification-events", "*", eventConsumer.HandleAllEvents)
+	consumerManager.RegisterHandler("billing-events", "*", eventConsumer.HandleAllEvents)
+	consumerManager.RegisterHandler("file-events", "*", eventConsumer.HandleAllEvents)
 
 	if err := consumerManager.Start(ctx); err != nil {
 		logger.Error().Err(err).Msg("Failed to start event consumer")
 	}
+
+	// 13b. Start retention enforcement worker (background)
+	retentionWorker := service.NewRetentionWorker(auditRepo, retentionRepo)
+	retentionCtx, retentionCancel := context.WithCancel(ctx)
+	defer retentionCancel()
+	go retentionWorker.Start(retentionCtx)
 
 	// 14. Start server with graceful shutdown
 	srv := &http.Server{
@@ -146,6 +154,7 @@ func main() {
 	logger.Info().Msg("Shutting down server...")
 
 	consumerManager.Stop()
+	retentionCancel()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

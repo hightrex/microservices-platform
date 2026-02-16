@@ -115,6 +115,8 @@ pub mod event_types {
     pub const SUBSCRIPTION_CREATED: &str = "subscription.created";
     pub const SUBSCRIPTION_UPDATED: &str = "subscription.updated";
     pub const SUBSCRIPTION_CANCELED: &str = "subscription.canceled";
+    pub const SUBSCRIPTION_PAUSED: &str = "subscription.paused";
+    pub const SUBSCRIPTION_RESUMED: &str = "subscription.resumed";
     pub const INVOICE_PAID: &str = "invoice.paid";
     pub const INVOICE_FAILED: &str = "invoice.failed";
     pub const USAGE_RECORDED: &str = "usage.recorded";

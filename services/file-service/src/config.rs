@@ -13,6 +13,14 @@ pub struct FileServiceConfig {
     pub logger: LoggerConfig,
     pub quota: QuotaConfig,
     pub upload: UploadConfig,
+    pub auth: AuthenticationConfig,
+}
+
+/// Authentication configuration for JWT validation.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AuthenticationConfig {
+    /// JWT signing secret (shared with auth-service).
+    pub jwt_secret: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

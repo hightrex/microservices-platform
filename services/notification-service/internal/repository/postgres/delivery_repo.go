@@ -87,7 +87,7 @@ func (r *DeliveryRepo) List(ctx context.Context, notificationID uuid.UUID) ([]mo
 func (r *DeliveryRepo) GetFailedDeliveries(ctx context.Context, maxRetries int) ([]models.DeliveryLog, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT id, notification_id, tenant_id, channel, recipient, status, error_message, provider_response, retry_count, delivered_at, created_at
-		 FROM notification_delivery_log WHERE status = 'failed' AND retry_count < $1
+		 FROM notification_delivery_log WHERE status = 'failed' AND retry_count <= $1
 		 ORDER BY created_at ASC LIMIT 100`,
 		maxRetries,
 	)
@@ -110,4 +110,39 @@ func (r *DeliveryRepo) GetFailedDeliveries(ctx context.Context, maxRetries int) 
 	}
 
 	return logs, nil
+}
+
+// UpdateStatus updates the status of a delivery log entry (tenant-scoped).
+// Used by the retry worker to mark deliveries as delivered after a successful retry.
+func (r *DeliveryRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status models.DeliveryStatus) error {
+	tenantID, err := tenant.RequireTenant(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(ctx,
+		`UPDATE notification_delivery_log SET status = $1, delivered_at = NOW() WHERE id = $2 AND tenant_id = $3`,
+		status, id, tenantID,
+	)
+	if err != nil {
+		return errors.InternalServerError("Failed to update delivery status", err)
+	}
+	return nil
+}
+
+// IncrementRetryCount increments the retry count for a delivery log entry (tenant-scoped).
+func (r *DeliveryRepo) IncrementRetryCount(ctx context.Context, id uuid.UUID) error {
+	tenantID, err := tenant.RequireTenant(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(ctx,
+		`UPDATE notification_delivery_log SET retry_count = retry_count + 1 WHERE id = $1 AND tenant_id = $2`,
+		id, tenantID,
+	)
+	if err != nil {
+		return errors.InternalServerError("Failed to increment delivery retry count", err)
+	}
+	return nil
 }
